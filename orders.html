@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的訂單</title>
+<link rel="stylesheet" href="style.css?v=20251225-3">
+</head>
+
+<body>
+<div id="loading">載入中⋯</div>
+
+<header>
+  <a id="logoLink" href="#" target="_blank" rel="noopener">
+    <img id="logo" alt="Logo">
+  </a>
+  <div class="social">
+    <a id="ig" target="_blank" rel="noopener"><img id="igImg" alt="IG"></a>
+    <a id="wa" target="_blank" rel="noopener"><img id="waImg" alt="WhatsApp"></a>
+  </div>
+</header>
+
+<main>
+  <div class="page-wrap">
+    <h1>我的訂單</h1>
+    <div id="customerId" class="muted"></div>
+
+    <div class="tabs" id="arrivalTabs"></div>
+    <div id="totalWeight" class="total-weight"></div>
+
+    <div id="ordersContainer"></div>
+  </div>
+</main>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycby2I6Q2M67npEFW-Vqi14JS3L7rtuQ9DLD35KwhwCaGpyt3xBnRfNyeLcOGXfslA9sx/exec';
+
+/* URL auto-login: ?u= */
+const params = new URLSearchParams(location.search);
+const urlUser = (params.get('u') || '').trim();
+if (urlUser) localStorage.setItem('username', urlUser);
+
+const username = (localStorage.getItem('username') || '').trim();
+if (!username) location.href = 'index.html';
+
+/* Header from Data sheet */
+fetch(API)
+  .then(r=>r.json())
+  .then(d=>{
+    if (d.logo){ logo.src=d.logo.icon||''; logoLink.href=d.logo.url||'#'; }
+    if (d.ig){ ig.href=d.ig.url||'#'; igImg.src=d.ig.icon||''; }
+    if (d.whatsapp){ wa.href=d.whatsapp.url||'#'; waImg.src=d.whatsapp.icon||''; }
+  })
+  .catch(()=>{});
+
+/* group number sorting: 第36團 > 第9團 */
+function groupNum(str){
+  const m = String(str||'').match(/\d+/);
+  return m ? parseInt(m[0],10) : -1;
+}
+
+fetch(`${API}?username=${encodeURIComponent(username)}`)
+  .then(r=>r.json())
+  .then(data=>{
+    if (data.error){
+      alert(data.error);
+      localStorage.removeItem('username');
+      location.href='index.html';
+      return;
+    }
+
+    customerId.textContent = `ID: ${data.customerId || ''}`;
+
+    const orders = Array.isArray(data.orders) ? data.orders : [];
+    const tabs = document.getElementById('arrivalTabs');
+    const container = document.getElementById('ordersContainer');
+    const totalWeightEl = document.getElementById('totalWeight');
+
+    // arrivals list (excluding blank)
+    let arrivals = [...new Set(orders.map(o=>o.arrival).filter(a=>a && String(a).trim()))];
+    arrivals.sort((a,b)=>groupNum(b)-groupNum(a));
+
+    // tab display: 未到貨 + 最新3團; rest in ...
+    const showTabs = ['未到貨', ...arrivals.slice(0,3)];
+    const moreTabs = arrivals.slice(3);
+
+    function setActive(tabEl, name){
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      if (tabEl) tabEl.classList.add('active');
+      renderCards(name);
+    }
+
+    function renderTabs(){
+      tabs.innerHTML = '';
+
+      showTabs.forEach(name=>{
+        const t = document.createElement('div');
+        t.className = 'tab';
+        t.textContent = name;
+        t.addEventListener('click', ()=>setActive(t, name));
+        tabs.appendChild(t);
+      });
+
+      if(moreTabs.length){
+        const more = document.createElement('div');
+        more.className = 'tab more';
+        more.textContent = '...';
+
+        const list = document.createElement('div');
+        list.className = 'more-list';
+
+        moreTabs.forEach(name=>{
+          const item = document.createElement('div');
+          item.textContent = name;
+          item.addEventListener('click', ()=>{
+            setActive(null, name);
+            list.style.display='none';
+          });
+          list.appendChild(item);
+        });
+
+        more.appendChild(list);
+
+        // ✅ desktop hover + ✅ mobile click
+        more.addEventListener('click', ()=>{
+          list.style.display = (list.style.display==='block') ? 'none' : 'block';
+        });
+        more.addEventListener('mouseenter', ()=>list.style.display='block');
+        more.addEventListener('mouseleave', ()=>list.style.display='none');
+
+        tabs.appendChild(more);
+      }
+    }
+
+    function renderCards(selected){
+      container.innerHTML = '';
+      totalWeightEl.textContent = '';
+
+      let list = [];
+      if (selected === '未到貨'){
+        list = orders.filter(o => !o.arrival || !String(o.arrival).trim());
+      } else {
+        list = orders.filter(o => String(o.arrival).trim() === String(selected).trim());
+        const total = list.reduce((s,o)=>s + (parseFloat(o.weight)||0), 0);
+        if (total > 0) totalWeightEl.textContent = `本團總重量：${total.toFixed(3)} kg`;
+      }
+
+      list.forEach(o=>{
+        const w = parseFloat(o.weight) || 0;
+        const arrived = !!(o.arrival && String(o.arrival).trim());
+        const showWeight = arrived && w > 0;
+
+        const card = document.createElement('div');
+        card.className = 'card-fixed';
+
+        card.innerHTML = `
+          <div class="card-left">
+            <div>${esc(o.orderedDate||'')}</div>
+            <div>${esc(o.shop||'')}</div>
+            ${o.link ? `<div class="item-link"><a href="${escAttr(o.link)}" target="_blank" rel="noopener">${esc(o.link)}</a></div>` : ''}
+            <div>${esc(o.item||'')}</div>
+            <div>￥${esc(o.jpy ?? '')}</div>
+            ${o.code ? `<div class="code">${esc(o.code)}</div>` : ''}
+          </div>
+
+          <div class="card-right">
+            <div class="card-img-wrap">
+              ${o.img
+                ? `<img class="card-img" src="${escAttr(o.img)}" alt="">`
+                : `<div class="card-img-placeholder">No Image</div>`
+              }
+            </div>
+            <div class="card-weight">${showWeight ? `${w.toFixed(3)} kg` : ''}</div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    renderTabs();
+    // default: first tab (未到貨)
+    const first = tabs.querySelector('.tab');
+    if (first) first.click();
+  })
+  .catch(()=>alert('無法載入訂單，請稍後再試'))
+  .finally(()=>document.getElementById('loading').style.display='none');
+
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
+function escAttr(s){ return esc(s).replace(/\n/g,' '); }
+</script>
+
+</body>
+</html>
