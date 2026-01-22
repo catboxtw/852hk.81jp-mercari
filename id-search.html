@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Catbox Admin | ID 查詢</title>
+
+    <script>
+        (function() {
+            const adminPw = localStorage.getItem('adminPw');
+            if (!adminPw) {
+                alert('⚠️ 請先登入管理員後台');
+                window.location.href = 'admin.html';
+            }
+        })();
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #FDFCFB; color: #5D4037; font-family: sans-serif; }
@@ -14,7 +25,6 @@
         .btn-outline:hover { background-color: #EFEBE9; }
         input, textarea { border: 1px solid #D7CCC8 !important; border-radius: 12px !important; padding: 12px !important; outline: none; }
         input:focus { border-color: #8D6E63 !important; ring: 2px #D7CCC8; }
-        /* 為了配合原本的 fade-in 效果 */
         .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -55,7 +65,8 @@
 <script>
 const API = 'https://script.google.com/macros/s/AKfycby2I6Q2M67npEFW-Vqi14JS3L7rtuQ9DLD35KwhwCaGpyt3xBnRfNyeLcOGXfslA9sx/exec';
 
-const TEMPLATE =
+// ✅ 已更新為您指定的廣東話語句
+const TEMPLATE = 
 `歡迎客人使用即時 Check 單功能 ✨
 你嘅專屬網址為：[link]
 
@@ -74,14 +85,13 @@ const resultContainer = document.getElementById('result-container');
 document.getElementById('btn').addEventListener('click', search);
 cidEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') search(); });
 
+// 進入頁面自動讀取 ID 清單
 loadIdList();
 
 function loadIdList(){
     const pw = (localStorage.getItem('adminPw') || '').trim();
-    if(!pw){
-        statusEl.textContent = '⚠️ 請先回後台登入一次';
-        return;
-    }
+    if(!pw) return; // 守門員腳本已處理跳轉
+
     statusEl.textContent = '⏳ 正在同步客戶 ID 清單...';
 
     const body = new URLSearchParams();
@@ -145,7 +155,7 @@ function search(){
                 <div class="pt-4 border-t border-[#F5F5F5]">
                     <div class="flex justify-between items-center mb-2">
                          <label class="block text-xs font-bold text-[#8D6E63] uppercase tracking-wider">自動生成回覆文字</label>
-                         <button type="button" onclick="copyMsg()" class="text-sm font-bold text-[#5D4037] hover:underline">一鍵複製</button>
+                         <button type="button" onclick="copyMsg(event)" class="text-sm font-bold text-[#5D4037] hover:underline">一鍵複製</button>
                     </div>
                     <textarea id="msg" class="w-full text-sm leading-relaxed text-gray-600 bg-[#F9F9F9] h-48">${msg}</textarea>
                 </div>
@@ -156,14 +166,16 @@ function search(){
         });
 }
 
-function copyMsg(){
+function copyMsg(event){
     const t = document.getElementById('msg');
     if(!t) return;
     t.select();
     document.execCommand('copy');
-    const originalText = event.target.innerText;
-    event.target.innerText = '已複製！';
-    setTimeout(() => event.target.innerText = originalText, 2000);
+    
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = '✅ 已複製！';
+    setTimeout(() => btn.innerText = originalText, 2000);
 }
 
 function esc(s){
