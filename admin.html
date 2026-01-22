@@ -89,7 +89,14 @@
     <button class="nav-btn" onclick="alert('開發中')"><span>📢</span>通知客人</button>
   </div>
 
-  <div id="batchBar">
+<div id="batchBar" style="position: relative;">
+    <button onclick="clearPendingUpdates()" style="position: absolute; top: 5px; right: 5px; background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 5px; line-height: 1;">✕</button>
+    
+    <div style="margin-bottom: 10px; border-bottom: 1px dashed #ffe0b2; padding-bottom: 8px; padding-right: 20px;">
+      <label style="font-size: 12px; color: #e65100; font-weight: bold; display: block; margin-bottom: 4px;">📅 到貨日期 (P欄 Arrival date):</label>
+      <input type="date" id="arrivalDateInput" style="width: 100%; padding: 8px; border: 1px solid #ffcc80; border-radius: 6px; font-size: 16px;">
+    </div>
+
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <span id="pendingMsg" style="color: #e65100; font-weight: bold;">📝 0 項待儲存</span>
       <button onclick="saveBatchData()" style="background:#f57c00; color:white; border:none; padding:10px 15px; border-radius:8px; font-weight:bold;">💾 儲存全部</button>
@@ -139,18 +146,33 @@ function doLogin() {
   body.append('action','getAdminItems');
   body.append('password',password);
 
-  fetch(API,{method:'POST',body})
-    .then(r=>r.json())
-    .then(d=>{
+  fetch(API, {method:'POST', body})
+    .then(r => r.json())
+    .then(d => {
       if(d.error) throw new Error(d.error);
       allItems = d.items || [];
-      document.getElementById('login').style.display='none';
-      document.getElementById('adminNav').style.display='grid';
-      document.getElementById('mainPanel').style.display='block';
+      
+      // 登入成功後的 UI 切換
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('adminNav').style.display = 'grid';
+      document.getElementById('mainPanel').style.display = 'block';
+      
+      // 初始化日期選框為當天日期
+      const dateInput = document.getElementById('arrivalDateInput');
+      if(dateInput) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+      }
+
       setFilter('todo');
       buildArrivalTabs();
     })
-    .catch(err => { document.getElementById('loginStatus').textContent = '密碼錯誤'; });
+    .catch(err => { 
+      document.getElementById('loginStatus').textContent = '密碼錯誤'; 
+    });
 }
 
 function render() {
@@ -256,7 +278,15 @@ function updateUIStates() {
 }
 
 async function saveBatchData() {
-  if(!confirm("確定上傳？")) return;
+  if (pendingUpdates.size === 0) return;
+  if (!confirm("確定上傳？資料將寫入 P 欄及相關位置。")) return;
+
+  // 獲取並格式化日期
+  const dateVal = document.getElementById('arrivalDateInput').value;
+  if (!dateVal) { alert("請選擇到貨日期"); return; }
+  const d = new Date(dateVal);
+  const formattedDate = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+
   const btn = document.querySelector('#batchBar button');
   btn.disabled = true; 
   btn.textContent = '儲存中...';
@@ -268,33 +298,29 @@ async function saveBatchData() {
     body.append('row', row);
     body.append('image', data.image || '');
     body.append('weight', data.weight || '');
-    return fetch(API, {method:'POST', body}).then(r=>r.json());
+    body.append('arrivalDate', formattedDate); // 傳送到 GAS
+    return fetch(API, {method:'POST', body}).then(r => r.json());
   });
 
   try {
     await Promise.all(tasks);
-    alert('成功儲存！數據已更新。');
-    
-    // 關鍵修正：清空暫存而不刷新頁面 (防止登出)
+    alert('成功！數據已更新');
     pendingUpdates.clear();
     
-    // 重新從伺服器獲取最新數據並刷新 UI，保持登入狀態
+    // 保持登入狀態並刷新數據
     const refreshBody = new URLSearchParams();
     refreshBody.append('action','getAdminItems');
     refreshBody.append('password',password);
-    
-    fetch(API,{method:'POST', body: refreshBody})
-      .then(r=>r.json())
-      .then(d=>{
+    fetch(API, {method:'POST', body: refreshBody})
+      .then(r => r.json()).then(d => {
         allItems = d.items || [];
         render(); 
         updateUIStates();
-        btn.disabled = false;
+        btn.disabled = false; 
         btn.textContent = '💾 儲存全部';
       });
-
   } catch (err) { 
-    alert('部分儲存失敗，請檢查網路'); 
+    alert('儲存失敗'); 
     btn.disabled = false; 
     btn.textContent = '💾 儲存全部';
   }
@@ -341,7 +367,20 @@ async function compressAndUpload(file) {
   });
 }
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  
 function escAttr(s){ return esc(s).replace(/\n/g,' '); }
+
+  function clearPendingUpdates() {
+  if (pendingUpdates.size === 0) return;
+  
+  if (confirm("確定要清除所有未儲存的重量和照片嗎？此操作無法還原。")) {
+    pendingUpdates.clear(); // 清空 Map
+    render();               // 重新渲染畫面（恢復原始數據）
+    updateUIStates();       // 隱藏 batchBar
+    alert("已清除暫存數據");
+  }
+}
+  
 </script>
 </body>
 </html>
