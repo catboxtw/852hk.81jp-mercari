@@ -2,88 +2,69 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-<title>🇯🇵Mercari代購-管理員後台</title>
-<link rel="stylesheet" href="style.css?v=20251225-3">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+<title>🇯🇵管理員後台</title>
+<link rel="stylesheet" href="style.css?v=20251225-4">
 <style>
   :root { --primary-color: #2563eb; --bg-light: #f8fafc; --warn-color: #f57c00; }
   
-  /* 全局手機優化 */
-  body { background: var(--bg-light); margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
+  /* 全局優化：防止 iOS 點擊閃爍與縮放 */
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  
+  body { 
+    background: var(--bg-light); 
+    margin: 0; padding: 0; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
+  }
+
   .admin-wrap { 
-    max-width: 1000px; 
-    margin: 0 auto; 
-    padding: 15px; 
-    padding-bottom: 100px; 
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+    max-width: 1000px; margin: 0 auto; padding: 15px; 
+    min-height: 100vh; display: flex; flex-direction: column;
   }
   
-  /* 登入介面優化 - 解決手機無法輸入問題 */
+  /* 登入介面優化 */
   .admin-login { 
-    background: #fff; 
-    padding: 30px 20px; 
-    border-radius: 16px; 
+    background: #fff; padding: 30px 20px; border-radius: 16px; 
     box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
-    max-width: 350px; 
-    margin: 60px auto; 
-    text-align: center;
-    position: relative;
-    z-index: 1000; /* 確保在最前方 */
+    width: 90%; max-width: 350px; margin: 60px auto; 
+    text-align: center; position: relative; z-index: 1001;
   }
-  .admin-login h3 { margin-top: 0; color: #1e293b; }
-  .admin-login input { 
-    width: 100%; 
-    padding: 15px; 
-    margin: 15px 0; 
-    border: 2px solid #e2e8f0; 
-    border-radius: 8px; 
-    font-size: 16px; /* 防止 iOS 縮放 */
-    box-sizing: border-box;
-    -webkit-appearance: none;
+
+  /* 關鍵：強制 16px 以上防止 Android/iOS 縮放 */
+  .admin-login input, .weight-input { 
+    font-size: 16px !important; 
+    border: 2px solid #e2e8f0; border-radius: 8px;
+    padding: 12px; width: 100%; outline: none;
+    -webkit-appearance: none; /* 去除 iOS 預設內陰影 */
   }
+
   .admin-login button { 
-    width: 100%; 
-    padding: 15px; 
-    background: var(--primary-color); 
-    color: white; 
-    border: none; 
-    border-radius: 8px; 
-    font-size: 16px; 
-    font-weight: bold; 
-    cursor: pointer;
+    width: 100%; padding: 15px; margin-top: 10px;
+    background: var(--primary-color); color: white; 
+    border: none; border-radius: 8px; font-size: 16px; font-weight: bold;
+    cursor: pointer; touch-action: manipulation;
   }
 
   /* 導航按鈕 */
-  .admin-nav { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 25px; }
-  @media (min-width: 600px) { .admin-nav { grid-template-columns: repeat(4, 1fr); } }
-
+  .admin-nav { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
   .nav-btn { 
-    padding: 12px 5px; border: none; border-radius: 10px; background: #fff; 
-    color: #475569; font-weight: bold; cursor: pointer; 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; 
-    flex-direction: column; align-items: center; gap: 5px; border: 2px solid transparent; 
+    padding: 12px 5px; border-radius: 10px; background: #fff; 
+    color: #475569; font-weight: bold; border: 2px solid transparent;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   }
-  .nav-btn.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
-  .nav-btn span { font-size: 20px; }
+  .nav-btn.active { background: var(--primary-color); color: #fff; }
 
-  /* 暫存提示條與浮動按鈕 */
-  #batchBar { display: none; background: #fff4e5; border: 1px solid #ffe0b2; padding: 12px 20px; border-radius: 12px; margin-bottom: 15px; position: sticky; top: 10px; z-index: 99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-  #floatingSave { display: none; position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: var(--warn-color); color: white; border: none; font-size: 30px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 101; align-items: center; justify-content: center; }
+  /* 卡片與輸入優化 */
+  .weight-input-wrap { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .weight-input { width: 100px; font-weight: bold; background: #f1f5f9; }
 
-  /* 重量輸入與卡片 */
-  .weight-input-wrap { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
-  .weight-input { 
-    width: 90px; padding: 10px; border: 2px solid #cbd5e1; border-radius: 8px; 
-    font-size: 16px; font-weight: bold; inputmode: decimal; 
-  }
-  .weight-input:focus { border-color: var(--warn-color); outline: none; background: #fffef2; }
-  .pending-card { border: 2px solid var(--warn-color) !important; background: #fffaf5 !important; }
+  #batchBar { display: none; background: #fff4e5; border: 1px solid #ffe0b2; padding: 12px; border-radius: 12px; margin-bottom: 15px; position: sticky; top: 10px; z-index: 99; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  #floatingSave { display: none; position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; border-radius: 50%; background: var(--warn-color); color: white; border: none; font-size: 28px; z-index: 101; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
 
   .tab-content { display: none; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
   .tab-content.active { display: block; }
-  .muted { color: #64748b; font-size: 13px; }
 </style>
 </head>
 
@@ -93,9 +74,9 @@
 
   <div id="login" class="admin-login">
     <h3>身分驗證</h3>
-    <input id="pw" type="password" placeholder="請輸入管理員密碼" autocomplete="current-password" inputmode="text" enterkeyhint="done">
+    <input id="pw" type="password" placeholder="請輸入管理員密碼" inputmode="text" enterkeyhint="done">
     <button id="loginBtn" type="button">進入管理系統</button>
-    <div id="loginStatus" class="muted" style="margin-top:15px; min-height: 20px;"></div>
+    <div id="loginStatus" style="margin-top:15px; color: #64748b; font-size: 14px;"></div>
   </div>
 
   <div id="adminNav" class="admin-nav" style="display:none;">
@@ -107,8 +88,8 @@
 
   <div id="batchBar">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span id="pendingMsg" style="color: #e65100; font-weight: bold; font-size: 14px;">📝 0 項未儲存</span>
-      <button onclick="saveBatchData()" style="background:#f57c00; color:white; border:none; padding:10px 18px; border-radius:8px; font-weight:bold; cursor:pointer;">💾 儲存全部</button>
+      <span id="pendingMsg" style="color: #e65100; font-weight: bold;">📝 0 項未儲存</span>
+      <button onclick="saveBatchData()" style="background:#f57c00; color:white; border:none; padding:10px 15px; border-radius:8px; font-weight:bold;">💾 儲存全部</button>
     </div>
   </div>
 
@@ -122,14 +103,10 @@
       <div id="arrivalTabs" class="tabs"></div>
       <div id="list"></div>
     </div>
-    <div id="pickingSection" class="tab-content"><div class="placeholder-view"><h3>📦 執貨功能開發中</h3></div></div>
-    <div id="notifySection" class="tab-content"><div class="placeholder-view"><h3>📢 通知功能開發中</h3></div></div>
   </div>
 </main>
 
 <button id="floatingSave" onclick="saveBatchData()">💾</button>
-
-<datalist id="id-list"></datalist>
 
 <script>
 const API = 'https://script.google.com/macros/s/AKfycby2I6Q2M67npEFW-Vqi14JS3L7rtuQ9DLD35KwhwCaGpyt3xBnRfNyeLcOGXfslA9sx/exec';
@@ -143,43 +120,31 @@ let currentFilter = 'todo';
 let currentArrival = '未到貨';
 let pendingUpdates = new Map();
 
-// --- 導航控制 ---
-function handleNavClick(url) {
-  if (pendingUpdates.size > 0) {
-    if (!confirm("⚠️ 暫存區還有資料未儲存，離開將會遺失進度！確定要離開嗎？")) return;
-  }
-  location.href = url;
-}
-
-function switchTab(btn) {
-  if (pendingUpdates.size > 0) {
-    if (!confirm("⚠️ 暫存區還有資料未儲存，切換分頁會清除進度！確定切換？")) return;
-    pendingUpdates.clear();
-    updateUIStates();
-  }
-  const targetId = btn.getAttribute('data-tab');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-  document.getElementById(targetId).classList.add('active');
-}
-
-// --- 初始化與登入 ---
 document.addEventListener('DOMContentLoaded', () => {
   const loginBtn = document.getElementById('loginBtn');
-  loginBtn.onclick = doLogin;
-  document.getElementById('pw').onkeydown = (e) => e.key==='Enter' && doLogin();
+  
+  // 核心修正：同時監聽多個事件，解決 iOS 點擊失效
+  const handleLogin = (e) => {
+    if (e) e.preventDefault(); 
+    doLogin();
+  };
 
-  document.querySelectorAll('.filter button').forEach(btn => {
-    btn.onclick = () => { currentFilter = btn.dataset.filter; render(); };
+  loginBtn.addEventListener('click', handleLogin);
+  document.getElementById('pw').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin(e);
   });
 });
 
 function doLogin() {
-  password = document.getElementById('pw').value.trim();
+  const pwInput = document.getElementById('pw');
+  password = pwInput.value.trim();
   if(!password) return;
+
   const status = document.getElementById('loginStatus');
   status.textContent = '驗證中...';
+  
+  // 鍵盤收起，防止畫面跳動
+  pwInput.blur(); 
 
   const body = new URLSearchParams();
   body.append('action','getAdminItems');
@@ -190,35 +155,41 @@ function doLogin() {
     .then(d=>{
       if(d.error) throw new Error(d.error);
       allItems = (d.items || []).filter(it => String(it.item||'').trim());
-      buildArrivalTabs();
       document.getElementById('login').style.display='none';
       document.getElementById('adminNav').style.display='grid';
       document.getElementById('mainPanel').style.display='block';
+      buildArrivalTabs();
       render();
     })
-    .catch(err => { status.textContent = '密碼錯誤或連線失敗'; });
+    .catch(err => { 
+      status.textContent = '密碼錯誤，請重新輸入';
+      pwInput.value = '';
+    });
 }
 
 function updateUIStates() {
   const count = pendingUpdates.size;
   document.getElementById('batchBar').style.display = count > 0 ? 'block' : 'none';
   document.getElementById('floatingSave').style.display = count > 0 ? 'flex' : 'none';
-  document.getElementById('pendingMsg').textContent = `📝 有 ${count} 項修改尚未儲存`;
+  document.getElementById('pendingMsg').textContent = `📝 ${count} 項待儲存`;
 }
 
-// --- 儲存邏輯 (上傳至主表) ---
+// 儲存至主表
 async function saveBatchData() {
+  if (pendingUpdates.size === 0) return;
+  
+  // 驗證重量
   for (let [row, data] of pendingUpdates) {
     if (!data.weight || parseFloat(data.weight) <= 0) {
-      alert(`⚠️ 第 ${row} 行尚未輸入有效重量！`);
+      alert(`請輸入第 ${row} 行的重量`);
       return;
     }
   }
 
-  if(!confirm("確定要將所有暫存數據上傳至主表嗎？")) return;
+  if(!confirm("確定上傳？資料將於凌晨 4 點同步。")) return;
 
-  const barBtn = document.querySelector('#batchBar button');
-  barBtn.disabled = true; barBtn.textContent = '🚀 儲存中...';
+  const btn = document.querySelector('#batchBar button');
+  btn.disabled = true; btn.textContent = '儲存中...';
 
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const body = new URLSearchParams();
@@ -232,16 +203,15 @@ async function saveBatchData() {
 
   try {
     await Promise.all(tasks);
-    alert('✅ 資料已成功上傳至主表！\n請注意：客戶端將於凌晨 4 點更新。');
+    alert('上傳成功！');
     pendingUpdates.clear();
     location.reload();
   } catch (err) {
-    alert('❌ 儲存部分失敗，請重試');
-    barBtn.disabled = false; barBtn.textContent = '💾 儲存全部';
+    alert('儲存失敗');
+    btn.disabled = false;
   }
 }
 
-// --- 渲染清單 ---
 function render() {
   const listEl = document.getElementById('list');
   listEl.innerHTML = '';
@@ -256,32 +226,28 @@ function render() {
 
   items.forEach(it => {
     const isPending = pendingUpdates.has(it.row);
-    const currentData = pendingUpdates.get(it.row) || {};
-    const displayImg = currentData.image || it.image;
-    const displayWeight = currentData.weight || it.weight || '';
+    const displayImg = isPending ? pendingUpdates.get(it.row).image : it.image;
+    const displayWeight = isPending ? pendingUpdates.get(it.row).weight : (it.weight || '');
 
     const card = document.createElement('div');
     card.className = `card-fixed ${isPending ? 'pending-card' : ''}`;
     card.innerHTML = `
       <div class="card-left">
-        ${it.code ? `<div class="code">${esc(it.code)}</div>` : ''}
-        <div style="font-weight:bold; font-size:15px; margin-bottom:4px;">${esc(it.item||'')}</div>
-        <div class="muted">ID: ${esc(it.custId||'—')} | Pos: ${esc(it.position||'—')}</div>
+        <div style="font-weight:bold">${esc(it.item)}</div>
+        <div class="muted" style="font-size:12px">ID: ${esc(it.custId)} | ${esc(it.position)}</div>
         <div class="weight-input-wrap">
-          <span style="font-size:14px; font-weight:bold;">重量:</span>
-          <input type="number" step="0.001" class="weight-input" value="${displayWeight}" placeholder="0.000">
-          <span style="font-weight:bold;">kg</span>
+          <input type="number" step="0.001" class="weight-input" value="${displayWeight}" placeholder="0.000" inputmode="decimal">
+          <span>kg</span>
         </div>
       </div>
       <div class="card-right">
         <div class="card-img-wrap">
-          ${displayImg ? `<img class="card-img" src="${escAttr(displayImg)}">` : `<div class="card-img-placeholder">未有圖片</div>`}
+          ${displayImg ? `<img src="${escAttr(displayImg)}" class="card-img">` : `<div class="card-img-placeholder">無圖</div>`}
         </div>
         <div class="photo-actions">
-          <button class="photo-btn cam">📷 拍照</button>
-          <button class="photo-btn gal">🖼️ 相簿</button>
+          <button class="photo-btn cam">📷</button>
+          <button class="photo-btn gal">🖼️</button>
         </div>
-        <div class="status muted" style="font-size:10px; margin-top:4px;">${isPending ? '⏳ 待儲存' : ''}</div>
         <input type="file" accept="image/*" style="display:none" class="file-input">
       </div>
     `;
@@ -302,24 +268,20 @@ function render() {
     fileInp.onchange = async () => {
       const f = fileInp.files[0];
       if(!f) return;
-      const st = card.querySelector('.status');
-      st.textContent = '上傳中...';
       try {
         const url = await compressAndUpload(f);
         let data = pendingUpdates.get(it.row) || { weight: weightInp.value };
         data.image = url;
         pendingUpdates.set(it.row, data);
-        card.querySelector('.card-img-wrap').innerHTML = `<img class="card-img" src="${url}">`;
-        card.classList.add('pending-card');
-        st.textContent = '✅ 已預覽';
+        render(); // 重新渲染以更新圖片
         updateUIStates();
-      } catch(e) { st.textContent = '❌ 失敗'; }
+      } catch(e) { alert('上傳失敗'); }
     };
     listEl.appendChild(card);
   });
 }
 
-// --- 其他工具 ---
+// 輔助函數
 function buildArrivalTabs(){
   const tabs = document.getElementById('arrivalTabs');
   tabs.innerHTML = '';
@@ -364,6 +326,19 @@ async function compressAndUpload(file) {
 
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function escAttr(s){ return esc(s).replace(/\n/g,' '); }
+
+function handleNavClick(url) {
+  if (pendingUpdates.size > 0 && !confirm("資料未儲存，確定離開？")) return;
+  location.href = url;
+}
+
+function switchTab(btn) {
+  const targetId = btn.getAttribute('data-tab');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+  document.getElementById(targetId).classList.add('active');
+}
 </script>
 </body>
 </html>
