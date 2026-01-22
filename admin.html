@@ -223,15 +223,26 @@ function triggerUpload(row, mode) {
     if(!inp.files[0]) return;
     const st = document.getElementById('st-' + row);
     st.textContent = '上傳中...';
+    
+    // 關鍵修正：從畫面的 Input 中即時抓取當前填寫的重量，防止被覆蓋
+    const currentWeightOnUI = document.querySelector(`.card-fixed:has(#file-${row}) .weight-input`)?.value || '';
+
     try {
       const url = await compressAndUpload(inp.files[0]);
-      let data = pendingUpdates.get(row) || { weight: '' };
+      
+      // 獲取現有暫存，若無則建立，並確保重量保留
+      let data = pendingUpdates.get(row) || { weight: currentWeightOnUI };
       data.image = url;
+      data.weight = currentWeightOnUI; // 強制確保重量同步
+
       pendingUpdates.set(row, data);
       st.textContent = '✅ 已預覽';
-      render();
+      render(); // 重新渲染，此時重量會從 pendingUpdates 讀回
       updateUIStates();
-    } catch(e) { st.textContent = '❌ 失敗'; }
+    } catch(e) { 
+      st.textContent = '❌ 失敗'; 
+      console.error(e);
+    }
   };
   inp.click();
 }
@@ -247,7 +258,8 @@ function updateUIStates() {
 async function saveBatchData() {
   if(!confirm("確定上傳？")) return;
   const btn = document.querySelector('#batchBar button');
-  btn.disabled = true; btn.textContent = '儲存中...';
+  btn.disabled = true; 
+  btn.textContent = '儲存中...';
 
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const body = new URLSearchParams();
@@ -261,12 +273,33 @@ async function saveBatchData() {
 
   try {
     await Promise.all(tasks);
-    alert('成功！');
+    alert('成功儲存！數據已更新。');
+    
+    // 關鍵修正：清空暫存而不刷新頁面 (防止登出)
     pendingUpdates.clear();
-    location.reload();
-  } catch (err) { alert('失敗'); btn.disabled = false; }
-}
+    
+    // 重新從伺服器獲取最新數據並刷新 UI，保持登入狀態
+    const refreshBody = new URLSearchParams();
+    refreshBody.append('action','getAdminItems');
+    refreshBody.append('password',password);
+    
+    fetch(API,{method:'POST', body: refreshBody})
+      .then(r=>r.json())
+      .then(d=>{
+        allItems = d.items || [];
+        render(); 
+        updateUIStates();
+        btn.disabled = false;
+        btn.textContent = '💾 儲存全部';
+      });
 
+  } catch (err) { 
+    alert('部分儲存失敗，請檢查網路'); 
+    btn.disabled = false; 
+    btn.textContent = '💾 儲存全部';
+  }
+}
+  
 function buildArrivalTabs(){
   const tabs = document.getElementById('arrivalTabs');
   tabs.innerHTML = '';
