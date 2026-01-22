@@ -7,57 +7,38 @@
 <style>
   :root { --primary-color: #2563eb; --bg-light: #f8fafc; --warn-color: #f57c00; }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  
-  body { 
-    background: var(--bg-light); margin: 0; padding: 0; 
-    font-family: -apple-system, sans-serif; overflow-x: hidden;
-  }
-
+  body { background: var(--bg-light); margin: 0; padding: 0; font-family: -apple-system, sans-serif; overflow-x: hidden; }
   .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 15px; padding-bottom: 100px; }
   
   /* 登入介面 */
-  .admin-login { 
-    background: #fff; padding: 30px 20px; border-radius: 16px; 
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 95%; max-width: 350px; 
-    margin: 60px auto; text-align: center;
-  }
-
+  .admin-login { background: #fff; padding: 30px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 95%; max-width: 350px; margin: 60px auto; text-align: center; }
   input, button { font-size: 16px !important; -webkit-appearance: none; }
 
   /* 導航與過濾按鈕 */
   .admin-nav { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-  .nav-btn { 
-    padding: 12px 5px; border-radius: 10px; background: #fff; border: 2px solid transparent;
-    display: flex; flex-direction: column; align-items: center; gap: 5px; font-weight: bold;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer;
-  }
+  .nav-btn { padding: 12px 5px; border-radius: 10px; background: #fff; border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 5px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
   .nav-btn.active { background: var(--primary-color); color: #fff; }
 
   .filter-bar { display: flex; gap: 8px; margin-bottom: 15px; }
-  .filter-btn { 
-    flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; 
-    background: #fff; cursor: pointer; font-weight: bold; color: #475569;
-  }
+  .filter-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-weight: bold; color: #475569; }
   .filter-btn.active { background: #e2e8f0; border-color: #94a3b8; color: #1e293b; }
 
   /* 商品卡片 */
-  .card-fixed { 
-    display: flex; background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 2px solid transparent; position: relative;
-  }
+  .card-fixed { display: flex; background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 2px solid transparent; position: relative; }
   .pending-card { border-color: var(--warn-color) !important; background: #fffaf5 !important; }
-  
-  /* 商品編號標籤樣式 */
-  .code-tag {
-    background: #475569; color: #fff; padding: 2px 8px; 
-    border-radius: 4px; font-size: 11px; font-weight: bold; 
-    display: inline-block; margin-bottom: 6px;
-  }
+  .code-tag { background: #475569; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 6px; }
 
   .card-left { flex: 1; padding-right: 10px; }
   .card-right { width: 90px; text-align: center; flex-shrink: 0; }
-  
-  .weight-input { width: 100px; padding: 8px; border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 10px; }
+  .weight-input { width: 100%; padding: 8px; border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 10px; }
+
+  /* Position 按鈕組 */
+  .pos-group { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+  .pos-btn { flex: 1; min-width: 45px; padding: 6px 2px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; font-size: 11px; cursor: pointer; color: #475569; }
+  .pos-btn.selected { background: #fee2e2; border-color: #ef4444; color: #b91c1c; font-weight: bold; box-shadow: 0 0 0 1px #ef4444; }
+
+  /* ID 輸入框 */
+  .id-input { width: 100%; padding: 8px; border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 5px; font-size: 14px; }
 
   .card-img-wrap { width: 85px; height: 85px; background: #f1f5f9; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
   .card-img { width: 100%; height: 100%; object-fit: cover; }
@@ -65,13 +46,12 @@
 
   #batchBar { display: none; background: #fff4e5; border: 1px solid #ffe0b2; padding: 15px; border-radius: 12px; margin-bottom: 15px; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
   #floatingSave { display: none; position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: var(--warn-color); color: white; border: none; font-size: 30px; z-index: 101; box-shadow: 0 4px 15px rgba(0,0,0,0.3); align-items: center; justify-content: center; }
-
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
 </style>
 </head>
 
 <body>
+<datalist id="idList"></datalist>
+
 <main class="admin-wrap">
   <div style="text-align: center; margin-bottom: 20px;"><h2>管理員後台</h2></div>
 
@@ -89,14 +69,12 @@
     <button class="nav-btn" onclick="alert('開發中')"><span>📢</span>通知客人</button>
   </div>
 
-<div id="batchBar" style="position: relative;">
+  <div id="batchBar" style="position: relative;">
     <button onclick="clearPendingUpdates()" style="position: absolute; top: 5px; right: 5px; background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 5px; line-height: 1;">✕</button>
-    
     <div style="margin-bottom: 10px; border-bottom: 1px dashed #ffe0b2; padding-bottom: 8px; padding-right: 20px;">
       <label style="font-size: 12px; color: #e65100; font-weight: bold; display: block; margin-bottom: 4px;">📅 到貨日期 (P欄 Arrival date):</label>
       <input type="date" id="arrivalDateInput" style="width: 100%; padding: 8px; border: 1px solid #ffcc80; border-radius: 6px; font-size: 16px;">
     </div>
-
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <span id="pendingMsg" style="color: #e65100; font-weight: bold;">📝 0 項待儲存</span>
       <button onclick="saveBatchData()" style="background:#f57c00; color:white; border:none; padding:10px 15px; border-radius:8px; font-weight:bold;">💾 儲存全部</button>
@@ -124,11 +102,11 @@ const CLOUD_FOLDER = 'mercari';
 
 let password = '';
 let allItems = [];
+let allCustomerIds = [];
 let currentFilter = 'todo';
 let currentArrival = '未到貨';
 let pendingUpdates = new Map();
 
-// 過濾器切換
 function setFilter(val) {
   currentFilter = val;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -152,27 +130,28 @@ function doLogin() {
       if(d.error) throw new Error(d.error);
       allItems = d.items || [];
       
-      // 登入成功後的 UI 切換
+      // 獲取客戶 ID 列表
+      fetch(API, {method:'POST', body: new URLSearchParams({action:'getCustomerIds', password:password})})
+        .then(r=>r.json()).then(res => {
+          allCustomerIds = res.ids || [];
+          const dl = document.getElementById('idList');
+          dl.innerHTML = allCustomerIds.map(id => `<option value="${esc(id)}">`).join('');
+        });
+
       document.getElementById('login').style.display = 'none';
       document.getElementById('adminNav').style.display = 'grid';
       document.getElementById('mainPanel').style.display = 'block';
       
-      // 初始化日期選框為當天日期
       const dateInput = document.getElementById('arrivalDateInput');
       if(dateInput) {
         const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        dateInput.value = today.toISOString().split('T')[0];
       }
 
       setFilter('todo');
       buildArrivalTabs();
     })
-    .catch(err => { 
-      document.getElementById('loginStatus').textContent = '密碼錯誤'; 
-    });
+    .catch(err => { document.getElementById('loginStatus').textContent = '密碼錯誤'; });
 }
 
 function render() {
@@ -190,23 +169,35 @@ function render() {
 
   items.forEach(it => {
     const isPending = pendingUpdates.has(it.row);
-    const displayImg = isPending ? pendingUpdates.get(it.row).image : it.image;
-    const displayWeight = isPending ? pendingUpdates.get(it.row).weight : (it.weight || '');
+    const pData = pendingUpdates.get(it.row) || {};
+    
+    const displayImg = pData.image !== undefined ? pData.image : it.image;
+    const displayWeight = pData.weight !== undefined ? pData.weight : (it.weight || '');
+    const displayId = pData.custId !== undefined ? pData.custId : (it.custId || '');
+    const displayPos = pData.position !== undefined ? pData.position : (it.position || '');
 
     const card = document.createElement('div');
     card.className = `card-fixed ${isPending ? 'pending-card' : ''}`;
     
-    // 商品編號邏輯：優先檢查 it.code
-    const itemCode = it.code || '無編號';
-
     card.innerHTML = `
       <div class="card-left">
-        <div class="code-tag">${esc(itemCode)}</div>
+        <div class="code-tag">${esc(it.code || '無編號')}</div>
         <div style="font-weight:bold; font-size:15px; color:#1e293b; margin-bottom:4px;">${esc(it.item)}</div>
-        <div style="font-size:12px; color:#64748b;">ID: <span style="color:#2563eb; font-weight:bold">${esc(it.custId)}</span> | Pos: ${esc(it.position || '—')}</div>
+        
+        <div style="font-size:12px; color:#64748b; margin-top:5px;">ID: 
+          <input type="text" list="idList" class="id-input" value="${esc(displayId)}" placeholder="輸入或選擇 ID">
+        </div>
+
+        <div class="pos-group">
+          ${['Wts', 'IG', 'FB', 'Line', 'TW'].map(p => `
+            <button class="pos-btn ${displayPos === p ? 'selected' : ''}" 
+                    onclick="updateField(${it.row}, 'position', '${p}')">${p}</button>
+          `).join('')}
+        </div>
+
         <div style="margin-top:10px;">
           <input type="number" step="0.001" class="weight-input" value="${displayWeight}" placeholder="0.000" inputmode="decimal">
-          <span style="font-weight:bold">kg</span>
+          <span style="font-weight:bold; font-size:12px; color:#64748b;">kg</span>
         </div>
       </div>
       <div class="card-right">
@@ -222,18 +213,30 @@ function render() {
       </div>
     `;
 
+    // 監聽 ID
+    const idInp = card.querySelector('.id-input');
+    idInp.oninput = () => updateField(it.row, 'custId', idInp.value);
+
     // 監聽重量
     const wInp = card.querySelector('.weight-input');
-    wInp.oninput = () => {
-      let data = pendingUpdates.get(it.row) || { image: it.image || '', weight: '' };
-      data.weight = wInp.value;
-      pendingUpdates.set(it.row, data);
-      card.classList.add('pending-card');
-      updateUIStates();
-    };
+    wInp.oninput = () => updateField(it.row, 'weight', wInp.value);
 
     listEl.appendChild(card);
   });
+}
+
+function updateField(row, field, value) {
+  let item = allItems.find(i => i.row === row);
+  let data = pendingUpdates.get(row) || { 
+    image: item.image || '', 
+    weight: item.weight || '', 
+    position: item.position || '', 
+    custId: item.custId || '' 
+  };
+  data[field] = value;
+  pendingUpdates.set(row, data);
+  render();
+  updateUIStates();
 }
 
 function triggerUpload(row, mode) {
@@ -245,31 +248,14 @@ function triggerUpload(row, mode) {
     if(!inp.files[0]) return;
     const st = document.getElementById('st-' + row);
     st.textContent = '上傳中...';
-    
-    // 關鍵修正：從畫面的 Input 中即時抓取當前填寫的重量，防止被覆蓋
-    const currentWeightOnUI = document.querySelector(`.card-fixed:has(#file-${row}) .weight-input`)?.value || '';
-
     try {
       const url = await compressAndUpload(inp.files[0]);
-      
-      // 獲取現有暫存，若無則建立，並確保重量保留
-      let data = pendingUpdates.get(row) || { weight: currentWeightOnUI };
-      data.image = url;
-      data.weight = currentWeightOnUI; // 強制確保重量同步
-
-      pendingUpdates.set(row, data);
-      st.textContent = '✅ 已預覽';
-      render(); // 重新渲染，此時重量會從 pendingUpdates 讀回
-      updateUIStates();
-    } catch(e) { 
-      st.textContent = '❌ 失敗'; 
-      console.error(e);
-    }
+      updateField(row, 'image', url);
+    } catch(e) { st.textContent = '❌ 失敗'; }
   };
   inp.click();
 }
 
-// 剩餘功能 (Tabs, Upload, Save) 維持不變
 function updateUIStates() {
   const count = pendingUpdates.size;
   document.getElementById('batchBar').style.display = count > 0 ? 'block' : 'none';
@@ -279,17 +265,14 @@ function updateUIStates() {
 
 async function saveBatchData() {
   if (pendingUpdates.size === 0) return;
-  if (!confirm("確定上傳？資料將寫入 P 欄及相關位置。")) return;
+  if (!confirm("確定儲存全部修改？")) return;
 
-  // 獲取並格式化日期
   const dateVal = document.getElementById('arrivalDateInput').value;
-  if (!dateVal) { alert("請選擇到貨日期"); return; }
   const d = new Date(dateVal);
   const formattedDate = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 
-  const btn = document.querySelector('#batchBar button');
-  btn.disabled = true; 
-  btn.textContent = '儲存中...';
+  const btn = document.querySelector('#batchBar button:last-child');
+  btn.disabled = true; btn.textContent = '儲存中...';
 
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const body = new URLSearchParams();
@@ -298,7 +281,9 @@ async function saveBatchData() {
     body.append('row', row);
     body.append('image', data.image || '');
     body.append('weight', data.weight || '');
-    body.append('arrivalDate', formattedDate); // 傳送到 GAS
+    body.append('arrivalDate', formattedDate);
+    body.append('position', data.position || '');
+    body.append('custId', data.custId || '');
     return fetch(API, {method:'POST', body}).then(r => r.json());
   });
 
@@ -306,26 +291,25 @@ async function saveBatchData() {
     await Promise.all(tasks);
     alert('成功！數據已更新');
     pendingUpdates.clear();
-    
-    // 保持登入狀態並刷新數據
     const refreshBody = new URLSearchParams();
     refreshBody.append('action','getAdminItems');
     refreshBody.append('password',password);
     fetch(API, {method:'POST', body: refreshBody})
       .then(r => r.json()).then(d => {
         allItems = d.items || [];
-        render(); 
-        updateUIStates();
-        btn.disabled = false; 
-        btn.textContent = '💾 儲存全部';
+        render(); updateUIStates();
+        btn.disabled = false; btn.textContent = '💾 儲存全部';
       });
-  } catch (err) { 
-    alert('儲存失敗'); 
-    btn.disabled = false; 
-    btn.textContent = '💾 儲存全部';
+  } catch (err) { alert('儲存失敗'); btn.disabled = false; }
+}
+
+function clearPendingUpdates() {
+  if (pendingUpdates.size > 0 && confirm("確定要清除所有未儲存的變動嗎？")) {
+    pendingUpdates.clear();
+    render(); updateUIStates();
   }
 }
-  
+
 function buildArrivalTabs(){
   const tabs = document.getElementById('arrivalTabs');
   tabs.innerHTML = '';
@@ -367,20 +351,7 @@ async function compressAndUpload(file) {
   });
 }
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-  
 function escAttr(s){ return esc(s).replace(/\n/g,' '); }
-
-  function clearPendingUpdates() {
-  if (pendingUpdates.size === 0) return;
-  
-  if (confirm("確定要清除所有未儲存的重量和照片嗎？此操作無法還原。")) {
-    pendingUpdates.clear(); // 清空 Map
-    render();               // 重新渲染畫面（恢復原始數據）
-    updateUIStates();       // 隱藏 batchBar
-    alert("已清除暫存數據");
-  }
-}
-  
 </script>
 </body>
 </html>
