@@ -1,147 +1,175 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ID 查詢</title>
-<link rel="stylesheet" href="style.css?v=20251225-4">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Catbox Admin | ID 查詢</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #FDFCFB; color: #5D4037; font-family: sans-serif; }
+        .admin-card { background: white; border: 1px solid #D7CCC8; border-radius: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .btn-primary { background-color: #5D4037; color: white; transition: all 0.3s; }
+        .btn-primary:hover { background-color: #4E342E; transform: translateY(-1px); }
+        .btn-outline { border: 1px solid #D7CCC8; color: #8D6E63; transition: all 0.3s; }
+        .btn-outline:hover { background-color: #EFEBE9; }
+        input, textarea { border: 1px solid #D7CCC8 !important; border-radius: 12px !important; padding: 12px !important; outline: none; }
+        input:focus { border-color: #8D6E63 !important; ring: 2px #D7CCC8; }
+        /* 為了配合原本的 fade-in 效果 */
+        .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
-<body>
+<body class="p-4 md:p-8">
 
-<main class="admin-wrap">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-    <h1 style="margin:0;">ID 查詢</h1>
-    <button onclick="location.href='admin.html'" class="photo-btn" style="width:auto;">返回後台</button>
-  </div>
+    <main class="max-w-2xl mx-auto animate-fade-in">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-[#5D4037]">ID 查詢系統</h1>
+                <p class="text-sm text-[#8D6E63]">Catbox 內部管理工具</p>
+            </div>
+            <button onclick="location.href='admin.html'" class="btn-outline px-4 py-2 rounded-full text-sm font-bold">返回後台</button>
+        </div>
 
-  <section class="admin-search" style="margin-top:12px;">
-    <h3>客戶 ID 查詢（Username / URL）</h3>
+        <section class="admin-card p-6 md:p-8 mb-6">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <span class="text-xl">🔍</span> 客戶 ID 查詢
+            </h3>
 
-    <div class="row">
-      <!-- ✅ datalist：可打字搜尋/選擇 -->
-      <input id="cid" list="id-list" placeholder="輸入 / 選擇 客戶ID">
-      <button id="btn" type="button">查詢</button>
-      <span id="status" class="muted"></span>
-    </div>
+            <div class="flex flex-col md:flex-row gap-3">
+                <div class="relative flex-grow">
+                    <input id="cid" list="id-list" placeholder="輸入或選擇 客戶ID (Username)" class="w-full">
+                    <datalist id="id-list"></datalist>
+                </div>
+                <button id="btn" class="btn-primary px-8 py-3 rounded-xl font-bold shadow-md">查詢</button>
+            </div>
+            <p id="status" class="text-xs mt-3 text-[#A1887F] font-medium min-h-[1rem]"></p>
+        </section>
 
-    <div id="result"></div>
-  </section>
-</main>
-
-<!-- ✅ 下拉選單資料 -->
-<datalist id="id-list"></datalist>
+        <div id="result-container" class="hidden animate-fade-in">
+            <section class="admin-card p-6 md:p-8 border-l-4 border-l-[#8D6E63]">
+                <div id="result"></div>
+            </section>
+        </div>
+    </main>
 
 <script>
 const API = 'https://script.google.com/macros/s/AKfycby2I6Q2M67npEFW-Vqi14JS3L7rtuQ9DLD35KwhwCaGpyt3xBnRfNyeLcOGXfslA9sx/exec';
 
 const TEMPLATE =
-`歡迎客人可以利用我哋嘅即時check單功能
-客人嘅專屬網址為: [link]
-當我哋成功購入商品後約20分鐘, 就會出現喺網頁
-而到貨後嘅下一日, 我哋會更新重量及圖片資料~
-如果對貨品有疑問, 歡迎隨時搵我哋! 謝謝~`;
+`歡迎客人使用即時 Check 單功能 ✨
+你嘅專屬網址為：[link]
+
+📦 狀態說明：
+1. 成功購入後約 20 分鐘會更新網頁。
+2. 到貨後隔日，我哋會更新重量及圖片。
+
+如有任何疑問，歡迎隨時聯絡我哋，謝謝！`;
 
 const cidEl = document.getElementById('cid');
 const listEl = document.getElementById('id-list');
 const statusEl = document.getElementById('status');
 const resultEl = document.getElementById('result');
+const resultContainer = document.getElementById('result-container');
 
 document.getElementById('btn').addEventListener('click', search);
 cidEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') search(); });
 
-/* ✅ 進頁面先載入所有 ID，供下拉式搜尋/選擇 */
 loadIdList();
 
 function loadIdList(){
-  const pw = (localStorage.getItem('adminPw') || '').trim();
-  if(!pw){
-    statusEl.textContent = '請先回後台登入一次';
-    return;
-  }
+    const pw = (localStorage.getItem('adminPw') || '').trim();
+    if(!pw){
+        statusEl.textContent = '⚠️ 請先回後台登入一次';
+        return;
+    }
+    statusEl.textContent = '⏳ 正在同步客戶 ID 清單...';
 
-  statusEl.textContent = '載入 ID 清單中…';
+    const body = new URLSearchParams();
+    body.append('action','getCustomerIds');
+    body.append('password', pw);
 
-  const body = new URLSearchParams();
-  body.append('action','getCustomerIds');   // ✅ 新 action（你 code.gs 要有）
-  body.append('password', pw);
-
-  fetch(API,{ method:'POST', body })
-    .then(r=>r.json())
-    .then(d=>{
-      if(d.error) throw new Error(d.error);
-      const ids = Array.isArray(d.ids) ? d.ids : [];
-      listEl.innerHTML = ids.map(v=>`<option value="${escAttr(v)}"></option>`).join('');
-      statusEl.textContent = '';
-    })
-    .catch(err=>{
-      console.error(err);
-      statusEl.textContent = '無法載入 ID 清單';
-    });
+    fetch(API,{ method:'POST', body })
+        .then(r=>r.json())
+        .then(d=>{
+            if(d.error) throw new Error(d.error);
+            const ids = Array.isArray(d.ids) ? d.ids : [];
+            listEl.innerHTML = ids.map(v=>`<option value="${escAttr(v)}"></option>`).join('');
+            statusEl.textContent = '✅ ID 清單已更新';
+            setTimeout(() => statusEl.textContent = '', 3000);
+        })
+        .catch(err=>{
+            statusEl.textContent = '❌ 無法載入 ID 清單';
+        });
 }
 
 function search(){
-  const id = (cidEl.value || '').trim();
-  if(!id) return;
+    const id = (cidEl.value || '').trim();
+    if(!id) return;
 
-  const pw = (localStorage.getItem('adminPw') || '').trim();
-  if(!pw){
-    statusEl.textContent = '請先回後台登入一次';
-    return;
-  }
+    const pw = (localStorage.getItem('adminPw') || '').trim();
+    statusEl.textContent='⏳ 查詢中...';
+    resultContainer.classList.add('hidden');
 
-  statusEl.textContent='查詢中…';
-  resultEl.innerHTML='';
+    const body = new URLSearchParams();
+    body.append('action','findUserById');
+    body.append('password', pw);
+    body.append('custId', id);
 
-  const body = new URLSearchParams();
-  body.append('action','findUserById');
-  body.append('password', pw);
-  body.append('custId', id);
+    fetch(API,{ method:'POST', body })
+        .then(r=>r.json())
+        .then(d=>{
+            statusEl.textContent='';
+            if(d.error){
+                alert('找不到此 ID，請檢查拼字是否正確');
+                return;
+            }
 
-  fetch(API,{ method:'POST', body })
-    .then(r=>r.json())
-    .then(d=>{
-      statusEl.textContent='';
-      if(d.error){
-        resultEl.textContent='找不到此 ID';
-        return;
-      }
+            const url = d.url || '';
+            const msg = TEMPLATE.replace('[link]', url);
 
-      // ✅ 自動塞入 link
-      const url = d.url || '';
-      const msg = TEMPLATE.replace('[link]', url);
+            resultContainer.classList.remove('hidden');
+            resultEl.innerHTML = `
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-[#8D6E63] uppercase tracking-wider mb-1">客戶名稱 Username</label>
+                    <div class="text-lg font-bold text-[#5D4037]">${esc(d.username||'')}</div>
+                </div>
 
-      resultEl.innerHTML = `
-        <div><b>Username：</b>${esc(d.username||'')}</div>
-        <div style="margin-top:8px;">
-          <b>URL：</b>
-          <input value="${escAttr(url)}" readonly onclick="this.select()">
-        </div>
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-[#8D6E63] uppercase tracking-wider mb-1">專屬查詢 URL</label>
+                    <div class="flex gap-2">
+                        <input value="${escAttr(url)}" readonly onclick="this.select()" class="flex-grow bg-[#FAFAFA] text-sm">
+                        <button onclick="window.open('${url}')" class="px-4 border border-[#D7CCC8] rounded-xl hover:bg-gray-50 text-sm">開啟</button>
+                    </div>
+                </div>
 
-        <div style="margin-top:10px;">
-          <button type="button" onclick="copyMsg()">一鍵複製回覆文字</button>
-        </div>
-
-        <textarea id="msg" style="width:100%;margin-top:8px;height:150px;">${msg}</textarea>
-      `;
-    })
-    .catch(err=>{
-      console.error(err);
-      statusEl.textContent='查詢失敗';
-    });
+                <div class="pt-4 border-t border-[#F5F5F5]">
+                    <div class="flex justify-between items-center mb-2">
+                         <label class="block text-xs font-bold text-[#8D6E63] uppercase tracking-wider">自動生成回覆文字</label>
+                         <button type="button" onclick="copyMsg()" class="text-sm font-bold text-[#5D4037] hover:underline">一鍵複製</button>
+                    </div>
+                    <textarea id="msg" class="w-full text-sm leading-relaxed text-gray-600 bg-[#F9F9F9] h-48">${msg}</textarea>
+                </div>
+            `;
+        })
+        .catch(err=>{
+            statusEl.textContent='❌ 查詢失敗';
+        });
 }
 
 function copyMsg(){
-  const t = document.getElementById('msg');
-  if(!t) return;
-  t.select();
-  document.execCommand('copy');
-  alert('已複製');
+    const t = document.getElementById('msg');
+    if(!t) return;
+    t.select();
+    document.execCommand('copy');
+    const originalText = event.target.innerText;
+    event.target.innerText = '已複製！';
+    setTimeout(() => event.target.innerText = originalText, 2000);
 }
 
 function esc(s){
-  return String(s ?? '').replace(/[&<>"']/g, m => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[m]));
+    return String(s ?? '').replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[m]));
 }
 function escAttr(s){ return esc(s).replace(/\n/g,' '); }
 </script>
