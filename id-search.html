@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ID 查詢</title>
+<link rel="stylesheet" href="style.css?v=20251225-4">
+</head>
+<body>
+
+<main class="admin-wrap">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <h1 style="margin:0;">ID 查詢</h1>
+    <button onclick="location.href='admin.html'" class="photo-btn" style="width:auto;">返回後台</button>
+  </div>
+
+  <section class="admin-search" style="margin-top:12px;">
+    <h3>客戶 ID 查詢（Username / URL）</h3>
+
+    <div class="row">
+      <!-- ✅ datalist：可打字搜尋/選擇 -->
+      <input id="cid" list="id-list" placeholder="輸入 / 選擇 客戶ID">
+      <button id="btn" type="button">查詢</button>
+      <span id="status" class="muted"></span>
+    </div>
+
+    <div id="result"></div>
+  </section>
+</main>
+
+<!-- ✅ 下拉選單資料 -->
+<datalist id="id-list"></datalist>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycby2I6Q2M67npEFW-Vqi14JS3L7rtuQ9DLD35KwhwCaGpyt3xBnRfNyeLcOGXfslA9sx/exec';
+
+const TEMPLATE =
+`歡迎客人可以利用我哋嘅即時check單功能
+客人嘅專屬網址為: [link]
+當我哋成功購入商品後約20分鐘, 就會出現喺網頁
+而到貨後嘅下一日, 我哋會更新重量及圖片資料~
+如果對貨品有疑問, 歡迎隨時搵我哋! 謝謝~`;
+
+const cidEl = document.getElementById('cid');
+const listEl = document.getElementById('id-list');
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+
+document.getElementById('btn').addEventListener('click', search);
+cidEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') search(); });
+
+/* ✅ 進頁面先載入所有 ID，供下拉式搜尋/選擇 */
+loadIdList();
+
+function loadIdList(){
+  const pw = (localStorage.getItem('adminPw') || '').trim();
+  if(!pw){
+    statusEl.textContent = '請先回後台登入一次';
+    return;
+  }
+
+  statusEl.textContent = '載入 ID 清單中…';
+
+  const body = new URLSearchParams();
+  body.append('action','getCustomerIds');   // ✅ 新 action（你 code.gs 要有）
+  body.append('password', pw);
+
+  fetch(API,{ method:'POST', body })
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.error) throw new Error(d.error);
+      const ids = Array.isArray(d.ids) ? d.ids : [];
+      listEl.innerHTML = ids.map(v=>`<option value="${escAttr(v)}"></option>`).join('');
+      statusEl.textContent = '';
+    })
+    .catch(err=>{
+      console.error(err);
+      statusEl.textContent = '無法載入 ID 清單';
+    });
+}
+
+function search(){
+  const id = (cidEl.value || '').trim();
+  if(!id) return;
+
+  const pw = (localStorage.getItem('adminPw') || '').trim();
+  if(!pw){
+    statusEl.textContent = '請先回後台登入一次';
+    return;
+  }
+
+  statusEl.textContent='查詢中…';
+  resultEl.innerHTML='';
+
+  const body = new URLSearchParams();
+  body.append('action','findUserById');
+  body.append('password', pw);
+  body.append('custId', id);
+
+  fetch(API,{ method:'POST', body })
+    .then(r=>r.json())
+    .then(d=>{
+      statusEl.textContent='';
+      if(d.error){
+        resultEl.textContent='找不到此 ID';
+        return;
+      }
+
+      // ✅ 自動塞入 link
+      const url = d.url || '';
+      const msg = TEMPLATE.replace('[link]', url);
+
+      resultEl.innerHTML = `
+        <div><b>Username：</b>${esc(d.username||'')}</div>
+        <div style="margin-top:8px;">
+          <b>URL：</b>
+          <input value="${escAttr(url)}" readonly onclick="this.select()">
+        </div>
+
+        <div style="margin-top:10px;">
+          <button type="button" onclick="copyMsg()">一鍵複製回覆文字</button>
+        </div>
+
+        <textarea id="msg" style="width:100%;margin-top:8px;height:150px;">${msg}</textarea>
+      `;
+    })
+    .catch(err=>{
+      console.error(err);
+      statusEl.textContent='查詢失敗';
+    });
+}
+
+function copyMsg(){
+  const t = document.getElementById('msg');
+  if(!t) return;
+  t.select();
+  document.execCommand('copy');
+  alert('已複製');
+}
+
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
+function escAttr(s){ return esc(s).replace(/\n/g,' '); }
+</script>
+
+</body>
+</html>
