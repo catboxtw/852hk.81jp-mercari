@@ -1,1 +1,0 @@
-# 852hk.81jp-mercari

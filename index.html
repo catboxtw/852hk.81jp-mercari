@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>訂單查詢</title>
+</head>
+<body>
+
+<h2>輸入 Username 查詢訂單</h2>
+<input id="username">
+<button onclick="go()">確認</button>
+
+<script>
+const params = new URLSearchParams(location.search);
+const u = params.get('u');
+if(u){
+  localStorage.setItem('username',u);
+  location.href='orders.html';
+}
+
+function go(){
+  const v = document.getElementById('username').value.trim();
+  if(!v) return alert('請輸入 Username');
+  localStorage.setItem('username',v);
+  location.href='orders.html';
+}
+</script>
+
+</body>
+</html>
