@@ -204,10 +204,15 @@ function updateField(row, field, value, isTyping = false) {
 async function saveBatchData() {
   if (pendingUpdates.size === 0) return;
   if (!confirm("確定儲存全部修改？")) return;
+  
   const btn = document.querySelector('#batchBar button:last-child');
-  btn.disabled = true; btn.textContent = '儲存中...';
+  const originalBtnText = btn.textContent;
+  btn.disabled = true; 
+  btn.textContent = '儲存中...';
 
+  // 獲取設定的到貨日期
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
+
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const body = new URLSearchParams({ action:'saveArrivalData', password, row });
     if (data.position !== undefined) body.append('position', data.position);
@@ -217,16 +222,42 @@ async function saveBatchData() {
     if (data.link !== undefined) body.append('link', data.link);
     if (data.track !== undefined) body.append('track', data.track);
 
-    if (data.weight && data.weight.toString().trim() !== "") body.append('arrivalDate', dateVal);
-    else body.append('arrivalDate', '');
+    // 只有輸入重量時才更新日期
+    if (data.weight && data.weight.toString().trim() !== "") {
+      body.append('arrivalDate', dateVal);
+    } else {
+      body.append('arrivalDate', '');
+    }
     
     return fetch(API, {method:'POST', body}).then(r => r.json());
   });
 
   try {
     await Promise.all(tasks);
-    alert('成功！'); location.reload();
-  } catch (err) { alert('儲存失敗'); btn.disabled = false; }
+    
+    // --- 關鍵修正：不 reload，直接更新本地數據 ---
+    // 重新從後端抓取最新數據，以確保同步
+    const refreshRes = await fetch(API, {
+      method:'POST', 
+      body: new URLSearchParams({action:'getAdminItems', password})
+    });
+    const refreshData = await refreshRes.json();
+    
+    if(refreshData.items) {
+      allItems = refreshData.items; // 更新本地緩存
+      pendingUpdates.clear();       // 清空待儲存列表
+      editingRows.clear();          // 清空編輯狀態
+      
+      render();                     // 重新渲染清單
+      updateUIStates();             // 隱藏儲存條
+      alert('儲存成功！');
+    }
+  } catch (err) {
+    alert('儲存失敗：' + err);
+  } finally {
+    btn.disabled = false; 
+    btn.textContent = originalBtnText;
+  }
 }
 
 function triggerUpload(row, mode) {
