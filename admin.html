@@ -112,6 +112,7 @@ let allCustomerIds = [];
 let currentFilter = 'todo';
 let currentArrival = '未到貨';
 let pendingUpdates = new Map();
+let editingRows = new Set(); // 追蹤哪些行正在手動修改 ID/Position
 
 function setFilter(val) {
   currentFilter = val;
@@ -165,6 +166,7 @@ function render() {
 
   items.forEach(it => {
     const isPending = pendingUpdates.has(it.row);
+    const isEditing = editingRows.has(it.row);
     const pData = pendingUpdates.get(it.row) || {};
     
     const displayImg = pData.image !== undefined ? pData.image : it.image;
@@ -173,10 +175,38 @@ function render() {
     const displayPos = pData.position !== undefined ? pData.position : (it.position || '');
     const currentArrivalDate = it.arrivalDate ? it.arrivalDate : '未到貨';
 
+    // 邏輯：如果原本就有 ID 或 Position，且使用者還沒按「修改」，就進入鎖定顯示模式
+    const shouldLock = (it.position || it.custId) && !isEditing && !isPending;
+
     const card = document.createElement('div');
     card.className = `card-fixed ${isPending ? 'pending-card' : ''}`;
     card.id = `card-${it.row}`;
     
+    let posAndIdHtml = '';
+    if (shouldLock) {
+      posAndIdHtml = `
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; background: #f1f5f9; padding: 8px; border-radius: 8px;">
+          <div style="font-size: 13px; font-weight: bold; color: #1e293b;">📍 ${esc(displayPos)}</div>
+          <div style="font-size: 13px; color: #94a3b8; flex: 1;">ID: ${esc(displayId)}</div>
+          <button onclick="editingRows.add(${it.row}); render();" 
+                  style="padding: 4px 8px; font-size: 11px; background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; color:#475569;">✏️ 修改</button>
+        </div>
+      `;
+    } else {
+      posAndIdHtml = `
+        <div class="pos-label">Position:</div>
+        <div class="pos-group">
+          ${Object.keys(POS_MAP).map(k => `
+            <button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" 
+                    onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>
+          `).join('')}
+        </div>
+        <div class="pos-label">Customer ID:</div>
+        <input type="text" list="idList" class="id-input" value="${esc(displayId)}" 
+               oninput="updateField(${it.row}, 'custId', this.value, true)">
+      `;
+    }
+
     card.innerHTML = `
       <div class="card-left">
         <div class="code-tag">${esc(it.code || '無編號')}</div>
@@ -186,19 +216,9 @@ function render() {
           📅 現有日期: <span style="color: ${it.arrivalDate ? 'var(--success-color)' : '#94a3b8'}; font-weight: bold;">${currentArrivalDate}</span>
         </div>
 
-        <div class="pos-label">Position:</div>
-        <div class="pos-group">
-          ${Object.keys(POS_MAP).map(k => `
-            <button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" 
-                    onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>
-          `).join('')}
-        </div>
+        ${posAndIdHtml}
 
-        <div class="pos-label">Customer ID:</div>
-        <input type="text" list="idList" class="id-input" value="${esc(displayId)}" 
-               oninput="updateField(${it.row}, 'custId', this.value, true)">
-
-        <div class="weight-row">
+        <div class="weight-row" style="margin-top: 8px;">
           <input type="number" step="0.001" class="weight-input" value="${displayWeight}" 
                  placeholder="0.000" inputmode="decimal" oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
@@ -279,16 +299,16 @@ async function saveBatchData() {
     const hasWeightChange = (data.weight !== undefined && String(data.weight) !== String(originalItem.weight));
     const hasImageChange  = (data.image !== undefined && data.image !== originalItem.image);
 
-    // 規則 3: 有重量變動 -> 帶日期
+    // 邏輯分流儲存：
     if (hasWeightChange) {
+      // 規則 3: 有重量變動 -> 帶日期
       if (data.position !== undefined) body.append('position', data.position);
       if (data.custId !== undefined) body.append('custId', data.custId);
       body.append('weight', data.weight);
       body.append('image', data.image || originalItem.image || '');
       body.append('arrivalDate', formattedDate);
-    } 
-    // 規則 1 & 2: 純圖片或純 ID/Pos -> 不帶日期
-    else {
+    } else {
+      // 規則 1 & 2: 純圖片或純 ID/Pos -> 不帶日期
       if (data.position !== undefined) body.append('position', data.position);
       if (data.custId !== undefined) body.append('custId', data.custId);
       if (data.image !== undefined) body.append('image', data.image);
@@ -302,6 +322,8 @@ async function saveBatchData() {
     await Promise.all(tasks);
     alert('成功！數據已更新');
     pendingUpdates.clear();
+    editingRows.clear(); // 儲存完畢後清除修改狀態，讓卡片恢復鎖定顯示
+    
     const res = await fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password:password})});
     const d = await res.json();
     allItems = d.items || [];
@@ -312,7 +334,10 @@ async function saveBatchData() {
 
 function clearPendingUpdates() {
   if (pendingUpdates.size > 0 && confirm("確定清除所有未儲存變動？")) {
-    pendingUpdates.clear(); render(); updateUIStates();
+    pendingUpdates.clear(); 
+    editingRows.clear();
+    render(); 
+    updateUIStates();
   }
 }
 
