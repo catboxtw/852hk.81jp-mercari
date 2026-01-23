@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
 <title>🇯🇵管理員後台</title>
 <style>
-  :root { --primary-color: #2563eb; --bg-light: #f8fafc; --warn-color: #f57c00; }
+  :root { --primary-color: #2563eb; --bg-light: #f8fafc; --warn-color: #f57c00; --success-color: #059669; }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   body { background: var(--bg-light); margin: 0; padding: 0; font-family: -apple-system, sans-serif; overflow-x: hidden; }
   .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 15px; padding-bottom: 100px; }
@@ -30,7 +30,7 @@
   .card-right { width: 95px; text-align: center; flex-shrink: 0; }
   
   /* 按鈕組優化 */
-  .pos-label { font-size: 11px; color: #94a3b8; font-weight: bold; }
+  .pos-label { font-size: 11px; color: #94a3b8; font-weight: bold; margin-top: 4px; }
   .pos-group { display: flex; gap: 3px; margin: 2px 0 6px 0; }
   .pos-btn { 
     flex: 1; padding: 6px 0; border: 1px solid #e2e8f0; background: #f8fafc; 
@@ -76,7 +76,7 @@
   <div id="batchBar" style="position: relative;">
     <button onclick="clearPendingUpdates()" style="position: absolute; top: 5px; right: 5px; background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 5px;">✕</button>
     <div style="margin-bottom: 10px; border-bottom: 1px dashed #ffe0b2; padding-bottom: 8px;">
-      <label style="font-size: 12px; color: #e65100; font-weight: bold; display: block; margin-bottom: 4px;">📅 到貨日期 (僅用於重量/照片修改):</label>
+      <label style="font-size: 12px; color: #e65100; font-weight: bold; display: block; margin-bottom: 4px;">📅 到貨日期 (僅用於重量修改):</label>
       <input type="date" id="arrivalDateInput" style="width: 100%; padding: 8px; border: 1px solid #ffcc80; border-radius: 6px;">
     </div>
     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -104,7 +104,6 @@ const CLOUD_NAME = 'disr3dmsj';
 const UPLOAD_PRESET = 'mercariup';
 const CLOUD_FOLDER = 'mercari';
 
-// 按鈕簡稱與完整名稱對照表
 const POS_MAP = { 'Wts': 'Whatsapp', 'IG': 'IG', 'FB': 'FB', 'Line': 'Line', 'TW': 'Taiwan' };
 
 let password = '';
@@ -172,6 +171,7 @@ function render() {
     const displayWeight = pData.weight !== undefined ? pData.weight : (it.weight || '');
     const displayId = pData.custId !== undefined ? pData.custId : (it.custId || '');
     const displayPos = pData.position !== undefined ? pData.position : (it.position || '');
+    const currentArrivalDate = it.arrivalDate ? it.arrivalDate : '未到貨';
 
     const card = document.createElement('div');
     card.className = `card-fixed ${isPending ? 'pending-card' : ''}`;
@@ -180,8 +180,12 @@ function render() {
     card.innerHTML = `
       <div class="card-left">
         <div class="code-tag">${esc(it.code || '無編號')}</div>
-        <div style="font-weight:bold; font-size:14px; color:#1e293b;">${esc(it.item)}</div>
+        <div style="font-weight:bold; font-size:14px; color:#1e293b; margin-bottom:2px;">${esc(it.item)}</div>
         
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">
+          📅 現有日期: <span style="color: ${it.arrivalDate ? 'var(--success-color)' : '#94a3b8'}; font-weight: bold;">${currentArrivalDate}</span>
+        </div>
+
         <div class="pos-label">Position:</div>
         <div class="pos-group">
           ${Object.keys(POS_MAP).map(k => `
@@ -216,7 +220,6 @@ function render() {
   });
 }
 
-// 修改欄位：isTyping 代表是否正在輸入，若是則不重繪整頁防止鍵盤收起
 function updateField(row, field, value, isTyping = false) {
   let item = allItems.find(i => i.row === row);
   let data = pendingUpdates.get(row) || { 
@@ -226,11 +229,10 @@ function updateField(row, field, value, isTyping = false) {
   data[field] = value;
   pendingUpdates.set(row, data);
   
-  // 標記卡片樣式
   const card = document.getElementById(`card-${row}`);
   if(card) card.classList.add('pending-card');
   
-  if(!isTyping) render(); // 按鈕類修改才重繪
+  if(!isTyping) render(); 
   updateUIStates();
 }
 
@@ -268,19 +270,29 @@ async function saveBatchData() {
   btn.disabled = true; btn.textContent = '儲存中...';
 
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
-    const item = allItems.find(i => i.row === row);
+    const originalItem = allItems.find(i => i.row === row);
     const body = new URLSearchParams();
     body.append('action', 'saveArrivalData'); 
     body.append('password', password);
     body.append('row', row);
-    body.append('image', data.image || '');
-    body.append('weight', data.weight || '');
-    body.append('position', data.position || '');
-    body.append('custId', data.custId || '');
-    
-    // 關鍵邏輯：只有重量或圖片改變時，才發送到貨日期
-    if (data.weight !== item.weight || data.image !== item.image) {
+
+    const hasWeightChange = (data.weight !== undefined && String(data.weight) !== String(originalItem.weight));
+    const hasImageChange  = (data.image !== undefined && data.image !== originalItem.image);
+
+    // 規則 3: 有重量變動 -> 帶日期
+    if (hasWeightChange) {
+      if (data.position !== undefined) body.append('position', data.position);
+      if (data.custId !== undefined) body.append('custId', data.custId);
+      body.append('weight', data.weight);
+      body.append('image', data.image || originalItem.image || '');
       body.append('arrivalDate', formattedDate);
+    } 
+    // 規則 1 & 2: 純圖片或純 ID/Pos -> 不帶日期
+    else {
+      if (data.position !== undefined) body.append('position', data.position);
+      if (data.custId !== undefined) body.append('custId', data.custId);
+      if (data.image !== undefined) body.append('image', data.image);
+      body.append('arrivalDate', ''); 
     }
     
     return fetch(API, {method:'POST', body}).then(r => r.json());
@@ -290,12 +302,11 @@ async function saveBatchData() {
     await Promise.all(tasks);
     alert('成功！數據已更新');
     pendingUpdates.clear();
-    fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password:password})})
-      .then(r => r.json()).then(d => {
-        allItems = d.items || [];
-        render(); updateUIStates();
-        btn.disabled = false; btn.textContent = '💾 儲存全部';
-      });
+    const res = await fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password:password})});
+    const d = await res.json();
+    allItems = d.items || [];
+    render(); updateUIStates();
+    btn.disabled = false; btn.textContent = '💾 儲存全部';
   } catch (err) { alert('儲存失敗'); btn.disabled = false; }
 }
 
