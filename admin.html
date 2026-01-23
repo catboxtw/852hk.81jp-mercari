@@ -29,8 +29,9 @@
   .weight-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
   .weight-input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; }
   .weight-unit { font-weight: bold; color: #64748b; font-size: 13px; }
-  .card-img-wrap { width: 90px; height: 90px; background: #f1f5f9; border-radius: 8px; overflow: hidden; margin-bottom: 8px; border: 1px solid #eee; }
+  .card-img-wrap { width: 90px; height: 90px; background: #f1f5f9; border-radius: 8px; overflow: hidden; margin-bottom: 8px; border: 1px solid #eee; position: relative; }
   .card-img { width: 100%; height: 100%; object-fit: cover; }
+  .preview-label { position: absolute; bottom: 0; width: 100%; background: rgba(37, 99, 235, 0.8); color: white; font-size: 9px; padding: 2px 0; }
   .photo-btn { padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
   #batchBar { display: none; background: #fff4e5; border: 1px solid #ffe0b2; padding: 15px; border-radius: 12px; margin-bottom: 15px; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   #floatingSave { display: none; position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: var(--warn-color); color: white; border: none; font-size: 30px; z-index: 101; box-shadow: 0 4px 15px rgba(0,0,0,0.3); align-items: center; justify-content: center; }
@@ -88,9 +89,11 @@ const API = 'https://script.google.com/macros/s/AKfycby2I6Q2M67npEFW-Vqi14JS3L7r
 const CLOUD_NAME = 'disr3dmsj';
 const UPLOAD_PRESET = 'mercariup';
 const CLOUD_FOLDER = 'mercari';
+const LINK_PREVIEW_KEY = '03b25d4673fab76cc420aba868dff16b';
 const POS_MAP = { 'Wts': 'Whatsapp', 'IG': 'IG', 'FB': 'FB', 'Line': 'Line', 'TW': 'Taiwan' };
 
 let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', currentArrival = '未到貨', pendingUpdates = new Map(), editingRows = new Set(); 
+let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
 
 function setFilter(val) {
   currentFilter = val;
@@ -120,7 +123,7 @@ function doLogin() {
   }).catch(err => { document.getElementById('loginStatus').textContent = '密碼錯誤'; });
 }
 
-function render() {
+async function render() {
   const listEl = document.getElementById('list');
   listEl.innerHTML = '';
   let items = allItems.filter(i => {
@@ -132,7 +135,7 @@ function render() {
     return (currentArrival === '未到貨') ? (!arr) : (arr === currentArrival);
   });
 
-  items.forEach(it => {
+  for (const it of items) {
     const isPending = pendingUpdates.has(it.row);
     const pData = pendingUpdates.get(it.row) || {};
     const displayImg = pData.image !== undefined ? pData.image : it.image;
@@ -146,6 +149,21 @@ function render() {
     const card = document.createElement('div');
     card.className = `card-fixed ${isPending ? 'pending-card' : ''}`;
     
+    // 處理圖片顯示邏輯：實物照 > 網址預覽 > 無圖
+    let finalImgHtml = `<div style="line-height:90px; color:#ccc; font-size:12px;">無圖</div>`;
+    if (displayImg) {
+      finalImgHtml = `<img src="${escAttr(displayImg)}" class="card-img">`;
+    } else if (displayLink && displayLink.startsWith('http')) {
+      // 如果沒有實物照但有網址，顯示一個 Loading 佔位符
+      const cacheImg = urlPreviewCache.get(displayLink);
+      if (cacheImg) {
+        finalImgHtml = `<img src="${escAttr(cacheImg)}" class="card-img"><div class="preview-label">網址預覽</div>`;
+      } else {
+        finalImgHtml = `<div id="img-load-${it.row}" style="line-height:90px; color:#3b82f6; font-size:10px;">抓取中...</div>`;
+        fetchPreview(displayLink, it.row);
+      }
+    }
+
     let posAndIdHtml = shouldLock ? 
       `<div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; background: #f1f5f9; padding: 8px; border-radius: 8px;">
           <div style="font-size: 13px; font-weight: bold; color: #1e293b;">📍 ${esc(displayPos)}</div>
@@ -175,7 +193,7 @@ function render() {
         </div>
       </div>
       <div class="card-right">
-        <div class="card-img-wrap">${displayImg ? `<img src="${escAttr(displayImg)}" class="card-img">` : `<div style="line-height:90px; color:#ccc; font-size:12px;">無圖</div>`}</div>
+        <div class="card-img-wrap" id="img-wrap-${it.row}">${finalImgHtml}</div>
         <div style="display:flex; gap:4px; justify-content:center">
           <button class="photo-btn" onclick="triggerUpload(${it.row}, 'cam')">📷</button>
           <button class="photo-btn" onclick="triggerUpload(${it.row}, 'gal')">🖼️</button>
@@ -184,7 +202,27 @@ function render() {
         <div id="st-${it.row}" style="font-size:10px; margin-top:4px; color:#64748b;">${isPending ? '⏳ 待儲存' : ''}</div>
       </div>`;
     listEl.appendChild(card);
-  });
+  }
+}
+
+// 異步抓取網址預覽圖
+async function fetchPreview(url, row) {
+  try {
+    const res = await fetch(`https://api.linkpreview.net/?key=${LINK_PREVIEW_KEY}&q=${encodeURIComponent(url)}`);
+    const data = await res.json();
+    if (data && data.image) {
+      urlPreviewCache.set(url, data.image);
+      const wrap = document.getElementById(`img-wrap-${row}`);
+      if (wrap) {
+        wrap.innerHTML = `<img src="${escAttr(data.image)}" class="card-img"><div class="preview-label">網址預覽</div>`;
+      }
+    } else {
+      throw new Error();
+    }
+  } catch (e) {
+    const loader = document.getElementById(`img-load-${row}`);
+    if (loader) loader.textContent = '無預覽圖';
+  }
 }
 
 function editPrompt(row, field, oldVal) {
@@ -203,14 +241,11 @@ function updateField(row, field, value, isTyping = false) {
 async function saveBatchData() {
   if (pendingUpdates.size === 0) return;
   if (!confirm("確定儲存全部修改？")) return;
-  
   const btn = document.querySelector('#batchBar button:last-child');
   const originalBtnText = btn.textContent;
-  btn.disabled = true; 
-  btn.textContent = '儲存中...';
+  btn.disabled = true; btn.textContent = '儲存中...';
 
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
-
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const params = { action: 'saveArrivalData', password: password, row: row };
     if (data.position !== undefined) params.position = data.position;
@@ -218,19 +253,16 @@ async function saveBatchData() {
     if (data.image !== undefined) params.image = data.image;
     if (data.weight !== undefined) params.weight = data.weight;
     if (data.link !== undefined) params.link = data.link;
-
     if (data.track !== undefined) {
       let val = data.track.trim();
       if (val !== "" && !val.startsWith("送り状番号：")) val = "送り状番号：" + val;
       params.track = val;
     }
-
     if (data.weight && data.weight.toString().trim() !== "") params.arrivalDate = dateVal;
     else params.arrivalDate = '';
     
     const body = new URLSearchParams();
     for (let key in params) body.append(key, params[key]);
-
     return fetch(API, {method:'POST', body}).then(r => r.json());
   });
 
