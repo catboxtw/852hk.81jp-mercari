@@ -205,23 +205,55 @@ async function render() {
   }
 }
 
-// 異步抓取網址預覽圖
+// 異步抓取網址預覽圖 (針對 Mercari 優化版)
 async function fetchPreview(url, row) {
   try {
-    const res = await fetch(`https://api.linkpreview.net/?key=${LINK_PREVIEW_KEY}&q=${encodeURIComponent(url)}`);
-    const data = await res.json();
-    if (data && data.image) {
-      urlPreviewCache.set(url, data.image);
-      const wrap = document.getElementById(`img-wrap-${row}`);
-      if (wrap) {
-        wrap.innerHTML = `<img src="${escAttr(data.image)}" class="card-img"><div class="preview-label">網址預覽</div>`;
-      }
-    } else {
-      throw new Error();
+    // 如果是 Mercari 網址，我們嘗試先用常用的圖片格式來「猜」
+    // Mercari 商品 ID 通常是 m 開頭的一串數字
+    const mId = url.match(/item\/(m\d+)/);
+    
+    // 方案 A: 如果能解析出 ID，直接構造 Mercari 的圖片 CDN 地址 (這是最穩定的)
+    if (mId && mId[1]) {
+      const mercariImg = `https://static.mercdn.net/item/detail/orig/photos/${mId[1]}_1.jpg`;
+      
+      // 驗證圖片是否有效
+      const imgCheck = new Image();
+      imgCheck.src = mercariImg;
+      imgCheck.onload = () => {
+        urlPreviewCache.set(url, mercariImg);
+        updateImgWrap(row, mercariImg);
+      };
+      imgCheck.onerror = () => fetchFromAPI(url, row); // 如果猜錯了，退回使用 API
+      return;
     }
+    
+    // 方案 B: 非 Mercari 或解析失敗，使用 API
+    await fetchFromAPI(url, row);
+    
   } catch (e) {
     const loader = document.getElementById(`img-load-${row}`);
     if (loader) loader.textContent = '無預覽圖';
+  }
+}
+
+// 原有的 API 抓取邏輯作為後備
+async function fetchFromAPI(url, row) {
+  const res = await fetch(`https://api.linkpreview.net/?key=${LINK_PREVIEW_KEY}&q=${encodeURIComponent(url)}`);
+  const data = await res.json();
+  if (data && data.image && !data.image.includes('logo')) { // 排除包含 logo 字眼的圖
+    urlPreviewCache.set(url, data.image);
+    updateImgWrap(row, data.image);
+  } else {
+    const loader = document.getElementById(`img-load-${row}`);
+    if (loader) loader.textContent = '無法獲取首圖';
+  }
+}
+
+// 統一更新圖片外框的輔助函數
+function updateImgWrap(row, imgSrc) {
+  const wrap = document.getElementById(`img-wrap-${row}`);
+  if (wrap) {
+    wrap.innerHTML = `<img src="${escAttr(imgSrc)}" class="card-img"><div class="preview-label">網址預覽</div>`;
   }
 }
 
