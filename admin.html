@@ -210,7 +210,6 @@ async function saveBatchData() {
   btn.disabled = true; 
   btn.textContent = '儲存中...';
 
-  // 獲取設定的到貨日期
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
 
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
@@ -220,9 +219,17 @@ async function saveBatchData() {
     if (data.image !== undefined) body.append('image', data.image);
     if (data.weight !== undefined) body.append('weight', data.weight);
     if (data.link !== undefined) body.append('link', data.link);
-    if (data.track !== undefined) body.append('track', data.track);
 
-    // 只有輸入重量時才更新日期
+    // --- 關鍵修改：自動加上「送り状番号：」前綴 ---
+    if (data.track !== undefined) {
+      let trackVal = data.track.trim();
+      // 檢查是否已經有前綴，避免重複疊加
+      if (trackVal !== "" && !trackVal.startsWith("送り状番号：")) {
+        trackVal = "送り状番号：" + trackVal;
+      }
+      body.append('track', trackVal);
+    }
+
     if (data.weight && data.weight.toString().trim() !== "") {
       body.append('arrivalDate', dateVal);
     } else {
@@ -235,8 +242,7 @@ async function saveBatchData() {
   try {
     await Promise.all(tasks);
     
-    // --- 關鍵修正：不 reload，直接更新本地數據 ---
-    // 重新從後端抓取最新數據，以確保同步
+    // 重新抓取數據以刷新頁面內容
     const refreshRes = await fetch(API, {
       method:'POST', 
       body: new URLSearchParams({action:'getAdminItems', password})
@@ -244,13 +250,12 @@ async function saveBatchData() {
     const refreshData = await refreshRes.json();
     
     if(refreshData.items) {
-      allItems = refreshData.items; // 更新本地緩存
-      pendingUpdates.clear();       // 清空待儲存列表
-      editingRows.clear();          // 清空編輯狀態
-      
-      render();                     // 重新渲染清單
-      updateUIStates();             // 隱藏儲存條
-      alert('儲存成功！');
+      allItems = refreshData.items;
+      pendingUpdates.clear();
+      editingRows.clear();
+      render();
+      updateUIStates();
+      alert('儲存成功！已留在當前頁面。');
     }
   } catch (err) {
     alert('儲存失敗：' + err);
