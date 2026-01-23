@@ -35,8 +35,7 @@
   #batchBar { display: none; background: #fff4e5; border: 1px solid #ffe0b2; padding: 15px; border-radius: 12px; margin-bottom: 15px; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   #floatingSave { display: none; position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: var(--warn-color); color: white; border: none; font-size: 30px; z-index: 101; box-shadow: 0 4px 15px rgba(0,0,0,0.3); align-items: center; justify-content: center; }
   
-  /* 新增樣式 */
-  .url-text { font-size: 10px; color: #3b82f6; word-break: break-all; margin-bottom: 2px; text-decoration: underline; cursor: pointer; }
+  .url-text { font-size: 10px; color: #3b82f6; word-break: break-all; margin-bottom: 2px; text-decoration: underline; cursor: pointer; display: block; }
   .green-tag { background: var(--success-color); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 5px; cursor: pointer; }
 </style>
 </head>
@@ -163,8 +162,8 @@ function render() {
     card.innerHTML = `
       <div class="card-left">
         <div class="code-tag">${esc(it.code || '無編號')}</div>
-        <div class="url-text" onclick="editPrompt(${it.row}, 'link', '${escAttr(displayLink)}')">${displayLink ? esc(displayLink) : '(點擊新增網址)'}</div>
-        <div style="font-weight:bold; font-size:14px; color:#1e293b; margin-bottom:2px;">${esc(it.item)}</div>
+        <a class="url-text" href="${displayLink}" target="_blank" rel="noopener">${displayLink ? esc(displayLink) : '(無網址)'}</a>
+        <div style="font-weight:bold; font-size:14px; color:#1e293b; margin-bottom:2px; cursor:pointer;" onclick="editPrompt(${it.row}, 'link', '${escAttr(displayLink)}')">${esc(it.item)}</div>
         <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 現有日期: <span style="font-weight:bold;">${it.arrivalDate || '未到貨'}</span></div>
         ${posAndIdHtml}
         <div class="weight-row">
@@ -213,55 +212,40 @@ async function saveBatchData() {
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
 
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
-    const body = new URLSearchParams({ action:'saveArrivalData', password, row });
-    if (data.position !== undefined) body.append('position', data.position);
-    if (data.custId !== undefined) body.append('custId', data.custId);
-    if (data.image !== undefined) body.append('image', data.image);
-    if (data.weight !== undefined) body.append('weight', data.weight);
-    if (data.link !== undefined) body.append('link', data.link);
+    const params = { action: 'saveArrivalData', password: password, row: row };
+    if (data.position !== undefined) params.position = data.position;
+    if (data.custId !== undefined) params.custId = data.custId;
+    if (data.image !== undefined) params.image = data.image;
+    if (data.weight !== undefined) params.weight = data.weight;
+    if (data.link !== undefined) params.link = data.link;
 
-    // --- 關鍵修改：自動加上「送り状番号：」前綴 ---
     if (data.track !== undefined) {
-      let trackVal = data.track.trim();
-      // 檢查是否已經有前綴，避免重複疊加
-      if (trackVal !== "" && !trackVal.startsWith("送り状番号：")) {
-        trackVal = "送り状番号：" + trackVal;
-      }
-      body.append('track', trackVal);
+      let val = data.track.trim();
+      if (val !== "" && !val.startsWith("送り状番号：")) val = "送り状番号：" + val;
+      params.track = val;
     }
 
-    if (data.weight && data.weight.toString().trim() !== "") {
-      body.append('arrivalDate', dateVal);
-    } else {
-      body.append('arrivalDate', '');
-    }
+    if (data.weight && data.weight.toString().trim() !== "") params.arrivalDate = dateVal;
+    else params.arrivalDate = '';
     
+    const body = new URLSearchParams();
+    for (let key in params) body.append(key, params[key]);
+
     return fetch(API, {method:'POST', body}).then(r => r.json());
   });
 
   try {
     await Promise.all(tasks);
-    
-    // 重新抓取數據以刷新頁面內容
-    const refreshRes = await fetch(API, {
-      method:'POST', 
-      body: new URLSearchParams({action:'getAdminItems', password})
-    });
+    const refreshRes = await fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})});
     const refreshData = await refreshRes.json();
-    
     if(refreshData.items) {
       allItems = refreshData.items;
-      pendingUpdates.clear();
-      editingRows.clear();
-      render();
-      updateUIStates();
-      alert('儲存成功！已留在當前頁面。');
+      pendingUpdates.clear(); editingRows.clear();
+      render(); updateUIStates();
+      alert('儲存成功！');
     }
-  } catch (err) {
-    alert('儲存失敗：' + err);
-  } finally {
-    btn.disabled = false; 
-    btn.textContent = originalBtnText;
+  } catch (err) { alert('儲存失敗：' + err); } finally {
+    btn.disabled = false; btn.textContent = originalBtnText;
   }
 }
 
