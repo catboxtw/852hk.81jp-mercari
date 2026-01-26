@@ -217,9 +217,16 @@ function doLogin() {
 async function render() {
   const listEl = document.getElementById('list');
   listEl.innerHTML = '';
+
+  // 1. 分層過濾邏輯
   let items = allItems.filter(i => {
-    if(currentFilter === 'todo') return !i.image;
-    if(currentFilter === 'done') return !!i.image;
+    // --- 新增：未評價與已完成的分類邏輯 ---
+    if (currentFilter === 'unrated') return i.status === '未評價';
+    if (currentFilter === 'completed') return !i.status || i.status === '';
+    
+    // 原有的 todo / done 邏輯
+    if (currentFilter === 'todo') return !i.image;
+    if (currentFilter === 'done') return !!i.image;
     return true;
   }).filter(i => {
     const arr = String(i.arrival || '').trim();
@@ -236,25 +243,33 @@ async function render() {
     const displayLink = pData.link !== undefined ? pData.link : (it.link || '');
     const displayTrack = pData.track !== undefined ? pData.track : (it.track || '');
 
+    // --- 2. 處理未評價模式下的網址轉換 ---
+    const isUnratedMode = (currentFilter === 'unrated');
+    let finalLink = displayLink;
+    if (isUnratedMode && finalLink && finalLink.includes('mercari.com/item/')) {
+      // 僅在顯示時替換，不改動原始資料
+      finalLink = finalLink.replace('/item/', '/transaction/');
+    }
+
     const shouldLock = (it.position || it.custId) && !editingRows.has(it.row) && !isPending;
     const card = document.createElement('div');
     card.className = `card-fixed ${isPending ? 'pending-card' : ''}`;
     
-    // 處理圖片顯示邏輯：實物照 > 網址預覽 > 無圖
+    // 圖片顯示邏輯保持不變
     let finalImgHtml = `<div style="line-height:90px; color:#ccc; font-size:12px;">無圖</div>`;
     if (displayImg) {
       finalImgHtml = `<img src="${escAttr(displayImg)}" class="card-img">`;
-    } else if (displayLink && displayLink.startsWith('http')) {
-      // 如果沒有實物照但有網址，顯示一個 Loading 佔位符
-      const cacheImg = urlPreviewCache.get(displayLink);
+    } else if (finalLink && finalLink.startsWith('http')) {
+      const cacheImg = urlPreviewCache.get(finalLink);
       if (cacheImg) {
         finalImgHtml = `<img src="${escAttr(cacheImg)}" class="card-img"><div class="preview-label">網址預覽</div>`;
       } else {
         finalImgHtml = `<div id="img-load-${it.row}" style="line-height:90px; color:#3b82f6; font-size:10px;">抓取中...</div>`;
-        fetchPreview(displayLink, it.row);
+        fetchPreview(finalLink, it.row);
       }
     }
 
+    // Position 與 ID HTML 保持不變
     let posAndIdHtml = shouldLock ? 
       `<div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; background: #f1f5f9; padding: 8px; border-radius: 8px;">
           <div style="font-size: 13px; font-weight: bold; color: #1e293b;">📍 ${esc(displayPos)}</div>
@@ -268,21 +283,38 @@ async function render() {
        <div class="pos-label">Customer ID:</div>
        <input type="text" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
 
+    // --- 3. 組合卡片內容，加入「一鍵完成評價」按鈕 ---
     card.innerHTML = `
       <div class="card-left">
         <div class="code-tag">${esc(it.code || '無編號')}</div>
-        <a class="url-text" href="${displayLink}" target="_blank" rel="noopener">${displayLink ? esc(displayLink) : '(無網址)'}</a>
+        
+        <a class="url-text" href="${finalLink}" target="_blank" rel="noopener" 
+           style="${isUnratedMode ? 'color:#2563eb; font-weight:bold; text-decoration:underline; font-size:14px;' : ''}">
+           ${finalLink ? esc(finalLink) : '(無網址)'}
+        </a>
+
         <div style="font-weight:bold; font-size:14px; color:#1e293b; margin-bottom:2px; cursor:pointer;" onclick="editPrompt(${it.row}, 'link', '${escAttr(displayLink)}')">${esc(it.item)}</div>
         <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 現有日期: <span style="font-weight:bold;">${it.arrivalDate || '未到貨'}</span></div>
+        
         ${posAndIdHtml}
+        
         <div class="weight-row">
           <input type="number" step="0.001" class="weight-input" value="${displayWeight}" placeholder="0.000" oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
         </div>
+        
         <div>
           ${displayTrack ? `<span class="green-tag" onclick="editPrompt(${it.row}, 'track', '${esc(displayTrack)}')">${esc(displayTrack)}</span>` : `<span style="font-size:11px; color:#94a3b8; cursor:pointer;" onclick="editPrompt(${it.row}, 'track', '')">+ 運單</span>`}
         </div>
+
+        ${isUnratedMode ? `
+          <button onclick="submitEvaluationComplete(${it.row})" 
+                  style="width:100%; margin-top:10px; padding:10px; background:#059669; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
+            ✅ 已完成評價 (移至完成)
+          </button>
+        ` : ''}
       </div>
+      
       <div class="card-right">
         <div class="card-img-wrap" id="img-wrap-${it.row}">${finalImgHtml}</div>
         <div style="display:flex; gap:4px; justify-content:center">
@@ -294,6 +326,19 @@ async function render() {
       </div>`;
     listEl.appendChild(card);
   }
+}
+
+// 補充：點擊按鈕後的執行函數
+function submitEvaluationComplete(row) {
+  if(!confirm('確認將此商品標記為已評價？')) return;
+  
+  // 這裡調用 GAS 的 completeEvaluation_ 接口
+  google.script.run.withSuccessHandler(() => {
+    // 成功後，本地數據也要更新，或者直接重新加載
+    const item = allItems.find(i => i.row === row);
+    if(item) item.status = ''; 
+    render();
+  }).completeEvaluation_(row);
 }
 
 // 異步抓取網址預覽圖 (針對 Mercari 優化版)
