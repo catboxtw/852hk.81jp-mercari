@@ -313,3 +313,18 @@ hr{border:none;border-top:1px solid #e7e7e7;margin:18px 0;}
   }
   /* ID 輸入框樣式 */
   .id-input { width: 100%; padding: 8px; border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 5px; font-size: 14px; }
+
+/* 正在修改中的商品卡樣式 */
+.editing-card {
+  border: 2px solid #f97316 !important; /* 橙色邊框 */
+  background-color: #fffaf5 !important; /* 極淡橙色背景 */
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.2); /* 淡淡的橙色發光感 */
+  position: relative;
+  z-index: 10; /* 確保邊框不會被遮擋 */
+}
+
+/* 確保原本的 card-fixed 有過渡效果，看起來更平滑 */
+.card-fixed {
+  transition: border 0.2s ease, background-color 0.2s ease;
+  border: 1px solid #e2e8f0; /* 原本的顏色 */
+}
