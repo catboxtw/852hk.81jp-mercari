@@ -137,11 +137,18 @@ const POS_MAP = { 'Wts': 'Whatsapp', 'IG': 'IG', 'FB': 'FB', 'Line': 'Line', 'TW
 let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', currentArrival = '未到貨', pendingUpdates = new Map(), editingRows = new Set(); 
 let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
 
-function setFilter(val) {
-  currentFilter = val;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('f-' + val).classList.add('active');
-  render();
+function setFilter(type) {
+  currentFilter = type;
+  let filtered = allItems;
+  
+  if (type === 'unrated') {
+    // 顯示 AC 欄等於「未評價」的商品
+    filtered = allItems.filter(it => it.status === '未評價');
+  } else if (type === 'completed') {
+    // 顯示 AC 欄已經清空的商品
+    filtered = allItems.filter(it => it.status === '');
+  }
+  render(filtered);
 }
 
 function doLogin() {
