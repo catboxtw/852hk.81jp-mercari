@@ -243,7 +243,16 @@ async function render() {
     const arr = String(i.arrival || '').trim();
     return (currentArrival === '未到貨') ? (!arr) : (arr === currentArrival);
   });
-
+  
+// --- 新增：如果是在未評價分頁，顯示「全頁一鍵完成」按鈕 ---
+  if (currentFilter === 'unrated' && items.length > 0) {
+    const batchBtn = document.createElement('button');
+    batchBtn.innerHTML = `✅ 一鍵完成本頁所有評價 (${items.length} 項)`;
+    batchBtn.style.cssText = "width:100%; padding:15px; background:#059669; color:white; border:none; border-radius:12px; font-weight:bold; margin-bottom:15px; font-size:16px; box-shadow:0 4px 6px rgba(0,0,0,0.1);";
+    batchBtn.onclick = () => submitAllEvaluations();
+    listEl.appendChild(batchBtn);
+  }
+  
   for (const it of items) {
     const isPending = pendingUpdates.has(it.row);
     const pData = pendingUpdates.get(it.row) || {};
@@ -340,34 +349,67 @@ card.className = `card-fixed ${isPending ? 'pending-card' : ''} ${isEditing ? 'e
   }
 }
 
-function submitEvaluationComplete(row) {
-  if(!confirm('確認將此商品標記為已評價？')) return;
+async function submitAllEvaluations() {
+  if(!confirm('確定要將此頁面所有商品標記為「已評價」嗎？')) return;
   
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '大規模處理中...';
+
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      body: new URLSearchParams({
+        action: 'clearAllUnrated',
+        password: password
+      })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      alert(`成功處理！共清除 ${data.count || 0} 項標記。`);
+      // 更新本地資料：將所有標記為未評價的 status 清空
+      allItems.forEach(it => { if(it.status === '未評價') it.status = ''; });
+      render();
+    } else {
+      alert('失敗：' + data.error);
+    }
+  } catch (e) {
+    alert('系統連線失敗');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+// 單個完成 (也改用 fetch 避免卡住)
+async function submitEvaluationComplete(row) {
   const btn = event.target;
   btn.disabled = true;
   btn.textContent = '處理中...';
 
-  // 確保這裡呼叫的是 completeEvaluation (無底線)
-  google.script.run
-    .withSuccessHandler((res) => {
-      if(res && res.success) {
-        // 更新本地數據，讓卡片消失
-        const itemIndex = allItems.findIndex(i => i.row === row);
-        if (itemIndex !== -1) allItems[itemIndex].status = '';
-        render(); 
-        alert('✅ 已完成評價，資料已移出');
-      } else {
-        alert('❌ 失敗：' + (res ? res.error : '未知錯誤'));
-        btn.disabled = false;
-        btn.textContent = '✅ 已完成評價 (移至完成)';
-      }
-    })
-    .withFailureHandler((err) => {
-      alert('⚠️ 系統錯誤：' + err);
-      btn.disabled = false;
-      btn.textContent = '✅ 已完成評價 (移至完成)';
-    })
-    .completeEvaluation(row); // <--- 對應 GAS 函數名
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      body: new URLSearchParams({
+        action: 'saveArrivalData', // 借用現有的儲存接口
+        password: password,
+        row: row,
+        status: '' // 將 AC 欄設為空
+      })
+    });
+    const data = await res.json();
+    if(data.items || data.success) {
+      const item = allItems.find(i => i.row === row);
+      if(item) item.status = '';
+      render();
+    }
+  } catch(e) {
+    alert('失敗');
+    btn.disabled = false;
+    btn.textContent = '✅ 已完成評價';
+  }
 }
 
 // 異步抓取網址預覽圖 (針對 Mercari 優化版)
