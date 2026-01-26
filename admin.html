@@ -38,6 +38,12 @@
   
   .url-text { font-size: 10px; color: #3b82f6; word-break: break-all; margin-bottom: 2px; text-decoration: underline; cursor: pointer; display: block; }
   .green-tag { background: var(--success-color); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 5px; cursor: pointer; }
+/* 彈出視窗基礎樣式 */
+  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center; }
+  .modal-content { background:#fff; width:92%; max-width:400px; padding:20px; border-radius:16px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .modal-input { padding:12px; border:1px solid #ddd; border-radius:8px; font-size:14px; width:100%; outline:none; }
+  .modal-input:focus { border-color: var(--primary-color); }
+  .add-item-btn { width:100%; padding:15px; background:#fff; border:2px dashed #cbd5e1; border-radius:12px; color:#64748b; font-weight:bold; margin-top:20px; cursor:pointer; }
 </style>
 </head>
 
@@ -79,8 +85,30 @@
       <button class="filter-btn" id="f-all" onclick="setFilter('all')">全部</button>
     </div>
     <div id="arrivalTabs" style="display:flex; gap:8px; margin-bottom:15px; overflow-x:auto; padding-bottom:5px;"></div>
-    <div id="list"></div>
+    <div id="addModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin:0; text-align:center;">➕ 加入新商品到主表</h3>
+    <input type="date" id="addDate" class="modal-input">
+    <select id="addShop" class="modal-input">
+      <option value="Mercari">Mercari</option>
+      <option value="Amazon">Amazon</option>
+      <option value="Rakuten">Rakuten</option>
+      <option value="Yahoo">Yahoo</option>
+    </select>
+    <input type="text" id="addLink" placeholder="商品網址" class="modal-input">
+    <input type="text" id="addItem" placeholder="商品名稱" class="modal-input">
+    <input type="number" id="addJpy" placeholder="價錢 (JPY)" class="modal-input">
+    <input type="text" id="addPos" placeholder="Position (Wts / IG...)" class="modal-input">
+    <input type="text" id="addCustId" placeholder="Customer ID" list="idList" class="modal-input">
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button onclick="closeAddModal()" style="flex:1; padding:12px; background:#f1f5f9; border:none; border-radius:8px; font-weight:bold;">取消</button>
+      <button id="submitAddBtn" onclick="submitNewItem()" style="flex:1; padding:12px; background:var(--primary-color); color:#fff; border:none; border-radius:8px; font-weight:bold;">確定加入</button>
+    </div>
   </div>
+</div>
+
+<div id="list"></div>
+<button class="add-item-btn" onclick="openAddModal()">➕ 加入新商品到主表</button>
 </main>
 <button id="floatingSave" onclick="saveBatchData()">💾</button>
 
@@ -369,6 +397,46 @@ async function compressAndUpload(file) {
 }
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function escAttr(s){ return esc(s).replace(/\n/g,' '); }
+  function openAddModal() {
+  document.getElementById('addModal').style.display = 'flex';
+  document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').style.display = 'none';
+}
+
+async function submitNewItem() {
+  const btn = document.getElementById('submitAddBtn');
+  const payload = {
+    action: 'addNewItem',
+    password: password,
+    date: document.getElementById('addDate').value.replace(/-/g, '/'),
+    shop: document.getElementById('addShop').value,
+    link: document.getElementById('addLink').value.trim(),
+    item: document.getElementById('addItem').value.trim(),
+    jpy: document.getElementById('addJpy').value,
+    pos: document.getElementById('addPos').value.trim(),
+    id: document.getElementById('addCustId').value.trim()
+  };
+
+  if (!payload.item) return alert('請填寫商品名稱');
+
+  btn.disabled = true; btn.textContent = '處理中...';
+  try {
+    const res = await fetch(API, { method: 'POST', body: new URLSearchParams(payload) });
+    const data = await res.json();
+    if (data.success) {
+      alert('已成功加入主表！');
+      closeAddModal();
+      // 清空輸入框
+      ['addLink', 'addItem', 'addJpy', 'addPos', 'addCustId'].forEach(id => document.getElementById(id).value = '');
+      // 刷新列表
+      doLogin();
+    } else { alert('出錯：' + data.error); }
+  } catch (e) { alert('發送失敗'); }
+  finally { btn.disabled = false; btn.textContent = '確定加入'; }
+}
 </script>
 </body>
 </html>
