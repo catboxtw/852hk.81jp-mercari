@@ -89,16 +89,15 @@
   <div class="modal-content">
     <h3 style="margin:0; text-align:center;">➕ 加入新商品到主表</h3>
     <input type="date" id="addDate" class="modal-input">
-    <select id="addShop" class="modal-input">
-      <option value="Mercari">Mercari</option>
-      <option value="Amazon">Amazon</option>
-      <option value="Rakuten">Rakuten</option>
-      <option value="Yahoo">Yahoo</option>
-    </select>
+<select id="addShop" class="modal-input">
+  <option value="">選擇商店...</option>
+</select>
     <input type="text" id="addLink" placeholder="商品網址" class="modal-input">
     <input type="text" id="addItem" placeholder="商品名稱" class="modal-input">
     <input type="number" id="addJpy" placeholder="價錢 (JPY)" class="modal-input">
-    <input type="text" id="addPos" placeholder="Position (Wts / IG...)" class="modal-input">
+    <select id="addPos" class="modal-input">
+  <option value="">選擇來源 (Position)...</option>
+</select>
     <input type="text" id="addCustId" placeholder="Customer ID" list="idList" class="modal-input">
     <div style="display:flex; gap:10px; margin-top:10px;">
       <button onclick="closeAddModal()" style="flex:1; padding:12px; background:#f1f5f9; border:none; border-radius:8px; font-weight:bold;">取消</button>
@@ -142,6 +141,20 @@ function doLogin() {
       fetch(API, {method:'POST', body: new URLSearchParams({action:'getCustomerIds', password})}).then(r=>r.json()).then(res => {
           allCustomerIds = res.ids || [];
           document.getElementById('idList').innerHTML = allCustomerIds.map(id => `<option value="${esc(id)}">`).join('');
+          
+          // --- 新增：動態填入商店選項 (從你 Data Sheet 的資料中提取) ---
+          const shopSelect = document.getElementById('addShop');
+          const shops = [...new Set(allItems.map(i => i.shop).filter(s => s))]; // 從現有資料抓取商店
+          if (shops.length === 0) { // 如果主表沒資料，提供預設
+             shops.push("Mercari", "Amazon", "Rakuten", "Yahoo");
+          }
+          shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
+            shops.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+          // --- 新增：動態填入 Position 選項 (從 POS_MAP 提取) ---
+          const posSelect = document.getElementById('addPos');
+          posSelect.innerHTML = '<option value="">選擇來源...</option>' + 
+            Object.values(POS_MAP).map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
       });
       document.getElementById('login').style.display = 'none';
       document.getElementById('adminNav').style.display = 'grid';
@@ -421,7 +434,8 @@ async function submitNewItem() {
   };
 
   if (!payload.item) return alert('請填寫商品名稱');
-
+if (!payload.shop) return alert('請選擇商店');
+if (!payload.pos) return alert('請選擇 Position');
   btn.disabled = true; btn.textContent = '處理中...';
   try {
     const res = await fetch(API, { method: 'POST', body: new URLSearchParams(payload) });
