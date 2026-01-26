@@ -8,13 +8,13 @@
   :root { --primary-color: #2563eb; --bg-light: #f8fafc; --warn-color: #f57c00; --success-color: #059669; }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   body { background: var(--bg-light); margin: 0; padding: 0; font-family: -apple-system, sans-serif; overflow-x: hidden; }
-  .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 15px; padding-bottom: 100px; }
+  .admin-wrap { max-width: 1000px; margin: 0 auto; padding: 15px; padding-bottom: 120px; }
   .admin-login { background: #fff; padding: 30px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 95%; max-width: 350px; margin: 60px auto; text-align: center; }
   .admin-nav { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
   .nav-btn { padding: 12px 5px; border-radius: 10px; background: #fff; border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 5px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
   .nav-btn.active { background: var(--primary-color); color: #fff; }
-  .filter-bar { display: flex; gap: 8px; margin-bottom: 15px; }
-  .filter-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-weight: bold; color: #475569; }
+  .filter-bar { display: flex; gap: 6px; margin-bottom: 15px; }
+  .filter-btn { flex: 1; padding: 10px 5px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-weight: bold; color: #475569; font-size: 13px; }
   .filter-btn.active { background: #e2e8f0; border-color: #94a3b8; color: #1e293b; }
   .card-fixed { display: flex; background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 2px solid transparent; }
   .pending-card { border-color: var(--warn-color) !important; background: #fffaf5 !important; }
@@ -35,14 +35,42 @@
   .photo-btn { padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
   #batchBar { display: none; background: #fff4e5; border: 1px solid #ffe0b2; padding: 15px; border-radius: 12px; margin-bottom: 15px; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   #floatingSave { display: none; position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: var(--warn-color); color: white; border: none; font-size: 30px; z-index: 101; box-shadow: 0 4px 15px rgba(0,0,0,0.3); align-items: center; justify-content: center; }
-  
   .url-text { font-size: 10px; color: #3b82f6; word-break: break-all; margin-bottom: 2px; text-decoration: underline; cursor: pointer; display: block; }
   .green-tag { background: var(--success-color); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 5px; cursor: pointer; }
+
+  /* 新增商品的浮窗樣式 */
+  .add-item-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; }
+  .modal-content { background:#fff; width:90%; max-width:400px; padding:20px; border-radius:16px; display:flex; flex-direction:column; gap:10px; }
+  .modal-input { width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px; }
 </style>
 </head>
 
 <body>
 <datalist id="idList"></datalist>
+
+<div id="addModal" class="add-item-modal">
+  <div class="modal-content">
+    <h3 style="margin:0 0 10px 0;">➕ 加入新商品</h3>
+    <input type="date" id="addDate" class="modal-input">
+    <select id="addShop" class="modal-input">
+      <option value="Mercari">Mercari</option>
+      <option value="Amazon">Amazon</option>
+      <option value="Rakuten">Rakuten</option>
+      <option value="Yahoo">Yahoo</option>
+      <option value="Other">Other</option>
+    </select>
+    <input type="text" id="addLink" placeholder="商品網址" class="modal-input">
+    <input type="text" id="addItem" placeholder="商品名稱" class="modal-input">
+    <input type="number" id="addJpy" placeholder="商品價錢 (JPY)" class="modal-input">
+    <input type="text" id="addPos" placeholder="Position (e.g. Wts)" class="modal-input">
+    <input type="text" id="addCustId" placeholder="ID (客戶編號)" list="idList" class="modal-input">
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button onclick="closeAddModal()" style="flex:1; padding:12px; background:#f1f5f9; border:none; border-radius:8px;">取消</button>
+      <button onclick="submitNewItem()" id="submitBtn" style="flex:1; padding:12px; background:var(--primary-color); color:#fff; border:none; border-radius:8px; font-weight:bold;">儲存</button>
+    </div>
+  </div>
+</div>
+
 <main class="admin-wrap">
   <div style="text-align: center; margin-bottom: 20px;"><h2>管理員後台</h2></div>
 
@@ -75,11 +103,21 @@
   <div id="mainPanel" style="display:none">
     <div class="filter-bar">
       <button class="filter-btn" id="f-todo" onclick="setFilter('todo')">未完成</button>
+      <button class="filter-btn" id="f-review" onclick="setFilter('review')">未評價</button>
       <button class="filter-btn" id="f-done" onclick="setFilter('done')">已完成</button>
       <button class="filter-btn" id="f-all" onclick="setFilter('all')">全部</button>
     </div>
+
+    <div id="reviewActions" style="display:none; margin-bottom:15px;">
+      <button onclick="completeAllReviews()" style="width:100%; padding:12px; background:var(--success-color); color:#fff; border:none; border-radius:10px; font-weight:bold;">✅ 全部已完成評價 (移至已完成)</button>
+    </div>
+
     <div id="arrivalTabs" style="display:flex; gap:8px; margin-bottom:15px; overflow-x:auto; padding-bottom:5px;"></div>
     <div id="list"></div>
+
+    <div id="addBtnArea" style="display:none; margin-top:20px;">
+      <button onclick="openAddModal()" style="width:100%; padding:15px; background:#fff; border:2px dashed #cbd5e1; border-radius:12px; color:#64748b; font-weight:bold;">➕ 加入新商品</button>
+    </div>
   </div>
 </main>
 <button id="floatingSave" onclick="saveBatchData()">💾</button>
@@ -93,12 +131,15 @@ const LINK_PREVIEW_KEY = '03b25d4673fab76cc420aba868dff16b';
 const POS_MAP = { 'Wts': 'Whatsapp', 'IG': 'IG', 'FB': 'FB', 'Line': 'Line', 'TW': 'Taiwan' };
 
 let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', currentArrival = '未到貨', pendingUpdates = new Map(), editingRows = new Set(); 
-let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
+let urlPreviewCache = new Map();
+let showMoreTabs = false; // 控制是否顯示更多團
+let reviewedRows = new Set(); // 暫存「已完成評價」的 Row ID
 
 function setFilter(val) {
   currentFilter = val;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('f-' + val).classList.add('active');
+  document.getElementById('reviewActions').style.display = (val === 'review') ? 'block' : 'none';
   render();
 }
 
@@ -126,9 +167,17 @@ function doLogin() {
 async function render() {
   const listEl = document.getElementById('list');
   listEl.innerHTML = '';
+  
+  // 顯示「加入商品」按鈕邏輯
+  document.getElementById('addBtnArea').style.display = (currentArrival === '未到貨' && currentFilter === 'todo') ? 'block' : 'none';
+
   let items = allItems.filter(i => {
-    if(currentFilter === 'todo') return !i.image;
-    if(currentFilter === 'done') return !!i.image;
+    const hasPhoto = !!i.image;
+    const isReviewed = reviewedRows.has(i.row);
+    
+    if(currentFilter === 'todo') return !hasPhoto;
+    if(currentFilter === 'review') return hasPhoto && !isReviewed;
+    if(currentFilter === 'done') return hasPhoto && isReviewed;
     return true;
   }).filter(i => {
     const arr = String(i.arrival || '').trim();
@@ -139,57 +188,38 @@ async function render() {
     const isPending = pendingUpdates.has(it.row);
     const pData = pendingUpdates.get(it.row) || {};
     const displayImg = pData.image !== undefined ? pData.image : it.image;
-    const displayWeight = pData.weight !== undefined ? pData.weight : (it.weight || '');
-    const displayId = pData.custId !== undefined ? pData.custId : (it.custId || '');
-    const displayPos = pData.position !== undefined ? pData.position : (it.position || '');
     const displayLink = pData.link !== undefined ? pData.link : (it.link || '');
-    const displayTrack = pData.track !== undefined ? pData.track : (it.track || '');
+    
+    // 評價標籤下的網址特殊處理
+    let finalUrl = displayLink;
+    if (currentFilter === 'review' && displayLink.includes('item/m')) {
+      finalUrl = displayLink.replace('/item/', '/transaction/');
+    }
 
-    const shouldLock = (it.position || it.custId) && !editingRows.has(it.row) && !isPending;
     const card = document.createElement('div');
     card.className = `card-fixed ${isPending ? 'pending-card' : ''}`;
     
-    // 處理圖片顯示邏輯：實物照 > 網址預覽 > 無圖
     let finalImgHtml = `<div style="line-height:90px; color:#ccc; font-size:12px;">無圖</div>`;
     if (displayImg) {
       finalImgHtml = `<img src="${escAttr(displayImg)}" class="card-img">`;
     } else if (displayLink && displayLink.startsWith('http')) {
-      // 如果沒有實物照但有網址，顯示一個 Loading 佔位符
       const cacheImg = urlPreviewCache.get(displayLink);
-      if (cacheImg) {
-        finalImgHtml = `<img src="${escAttr(cacheImg)}" class="card-img"><div class="preview-label">網址預覽</div>`;
-      } else {
+      if (cacheImg) finalImgHtml = `<img src="${escAttr(cacheImg)}" class="card-img"><div class="preview-label">網址預覽</div>`;
+      else {
         finalImgHtml = `<div id="img-load-${it.row}" style="line-height:90px; color:#3b82f6; font-size:10px;">抓取中...</div>`;
         fetchPreview(displayLink, it.row);
       }
     }
 
-    let posAndIdHtml = shouldLock ? 
-      `<div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; background: #f1f5f9; padding: 8px; border-radius: 8px;">
-          <div style="font-size: 13px; font-weight: bold; color: #1e293b;">📍 ${esc(displayPos)}</div>
-          <div style="font-size: 13px; color: #94a3b8; flex: 1;">ID: ${esc(displayId)}</div>
-          <button onclick="editingRows.add(${it.row}); render();" style="padding:4px 8px; font-size:11px; background:#fff; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;">✏️</button>
-       </div>` :
-      `<div class="pos-label">Position:</div>
-       <div class="pos-group">
-          ${Object.keys(POS_MAP).map(k => `<button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>`).join('')}
-       </div>
-       <div class="pos-label">Customer ID:</div>
-       <input type="text" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
-
     card.innerHTML = `
       <div class="card-left">
         <div class="code-tag">${esc(it.code || '無編號')}</div>
-        <a class="url-text" href="${displayLink}" target="_blank" rel="noopener">${displayLink ? esc(displayLink) : '(無網址)'}</a>
-        <div style="font-weight:bold; font-size:14px; color:#1e293b; margin-bottom:2px; cursor:pointer;" onclick="editPrompt(${it.row}, 'link', '${escAttr(displayLink)}')">${esc(it.item)}</div>
-        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 現有日期: <span style="font-weight:bold;">${it.arrivalDate || '未到貨'}</span></div>
-        ${posAndIdHtml}
+        <a class="url-text" href="${finalUrl}" target="_blank" rel="noopener">${finalUrl ? esc(finalUrl) : '(無網址)'}</a>
+        <div style="font-weight:bold; font-size:14px; color:#1e293b; margin-bottom:2px;">${esc(it.item)}</div>
+        <div style="font-size: 11px; color: #64748b;">ID: ${esc(it.custId || '未填')} | 📍 ${esc(it.position || '未填')}</div>
         <div class="weight-row">
-          <input type="number" step="0.001" class="weight-input" value="${displayWeight}" placeholder="0.000" oninput="updateField(${it.row}, 'weight', this.value, true)">
+          <input type="number" step="0.001" class="weight-input" value="${pData.weight !== undefined ? pData.weight : (it.weight || '')}" placeholder="0.000" oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
-        </div>
-        <div>
-          ${displayTrack ? `<span class="green-tag" onclick="editPrompt(${it.row}, 'track', '${esc(displayTrack)}')">${esc(displayTrack)}</span>` : `<span style="font-size:11px; color:#94a3b8; cursor:pointer;" onclick="editPrompt(${it.row}, 'track', '')">+ 運單</span>`}
         </div>
       </div>
       <div class="card-right">
@@ -198,49 +228,109 @@ async function render() {
           <button class="photo-btn" onclick="triggerUpload(${it.row}, 'cam')">📷</button>
           <button class="photo-btn" onclick="triggerUpload(${it.row}, 'gal')">🖼️</button>
         </div>
-        <input type="file" id="file-${it.row}" accept="image/*" style="display:none">
-        <div id="st-${it.row}" style="font-size:10px; margin-top:4px; color:#64748b;">${isPending ? '⏳ 待儲存' : ''}</div>
       </div>`;
     listEl.appendChild(card);
   }
 }
 
-// 異步抓取網址預覽圖 (針對 Mercari 優化版)
+// 評價功能：將當前標籤下的商品標記為已評價
+function completeAllReviews() {
+  if(!confirm("確定這頁全部商品都已完成評價？")) return;
+  const currentItems = allItems.filter(i => !!i.image && !reviewedRows.has(i.row) && (String(i.arrival).trim() === (currentArrival === '未到貨' ? '' : currentArrival)));
+  currentItems.forEach(it => reviewedRows.add(it.row));
+  alert(`已標記 ${currentItems.length} 項為已完成評價`);
+  setFilter('done');
+}
+
+// 新增商品彈窗控制
+function openAddModal() {
+  document.getElementById('addModal').style.display = 'flex';
+  document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
+}
+function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
+
+async function submitNewItem() {
+  const btn = document.getElementById('submitBtn');
+  const data = {
+    action: 'addNewItem',
+    password: password,
+    date: document.getElementById('addDate').value.replace(/-/g, '/'),
+    shop: document.getElementById('addShop').value,
+    link: document.getElementById('addLink').value.trim(),
+    item: document.getElementById('addItem').value.trim(),
+    jpy: document.getElementById('addJpy').value,
+    pos: document.getElementById('addPos').value.trim(),
+    id: document.getElementById('addCustId').value.trim()
+  };
+
+  if(!data.item || !data.id) return alert('商品名與 ID 為必填');
+  
+  btn.disabled = true; btn.textContent = '儲存中...';
+  try {
+    const body = new URLSearchParams();
+    for (let k in data) body.append(k, data[k]);
+    const res = await fetch(API, {method:'POST', body}).then(r=>r.json());
+    if(res.success) {
+      alert('商品已加入！');
+      closeAddModal();
+      // 重新整理數據
+      doLogin();
+    } else throw new Error(res.error);
+  } catch(e) { alert('失敗:'+e); }
+  finally { btn.disabled = false; btn.textContent = '儲存'; }
+}
+
+function buildArrivalTabs(){
+  const tabs = document.getElementById('arrivalTabs'); tabs.innerHTML = '';
+  let arrivals = [...new Set(allItems.map(i=>i.arrival).filter(a=>a))].sort((a,b)=>groupNum(b)-groupNum(a));
+  
+  // 基礎標籤
+  let showTabs = ['未到貨'];
+  if (showMoreTabs) showTabs = showTabs.concat(arrivals);
+  else showTabs = showTabs.concat(arrivals.slice(0, 4));
+
+  showTabs.forEach(name => {
+    const t = document.createElement('div');
+    t.style.cssText = `padding:8px 15px; border-radius:20px; background:${currentArrival===name?'#2563eb':'#fff'}; color:${currentArrival===name?'#fff':'#475569'}; border:1px solid #ddd; cursor:pointer; font-size:13px; font-weight:bold; white-space:nowrap;`;
+    t.textContent = name;
+    t.onclick = () => { currentArrival = name; render(); buildArrivalTabs(); };
+    tabs.appendChild(t);
+  });
+
+  // 翻頁按鈕 "..."
+  if (arrivals.length > 4) {
+    const moreBtn = document.createElement('div');
+    moreBtn.style.cssText = `padding:8px 15px; border-radius:20px; background:#f1f5f9; color:#64748b; border:1px solid #ddd; cursor:pointer; font-size:13px; font-weight:bold;`;
+    moreBtn.textContent = showMoreTabs ? '收起' : '...';
+    moreBtn.onclick = () => { showMoreTabs = !showMoreTabs; buildArrivalTabs(); };
+    tabs.appendChild(moreBtn);
+  }
+}
+
+// ---------------- 以下保留原有的功能性函數 ----------------
+
 async function fetchPreview(url, row) {
   try {
-    // 如果是 Mercari 網址，我們嘗試先用常用的圖片格式來「猜」
-    // Mercari 商品 ID 通常是 m 開頭的一串數字
     const mId = url.match(/item\/(m\d+)/);
-    
-    // 方案 A: 如果能解析出 ID，直接構造 Mercari 的圖片 CDN 地址 (這是最穩定的)
     if (mId && mId[1]) {
       const mercariImg = `https://static.mercdn.net/item/detail/orig/photos/${mId[1]}_1.jpg`;
-      
-      // 驗證圖片是否有效
       const imgCheck = new Image();
       imgCheck.src = mercariImg;
-      imgCheck.onload = () => {
-        urlPreviewCache.set(url, mercariImg);
-        updateImgWrap(row, mercariImg);
-      };
-      imgCheck.onerror = () => fetchFromAPI(url, row); // 如果猜錯了，退回使用 API
+      imgCheck.onload = () => { urlPreviewCache.set(url, mercariImg); updateImgWrap(row, mercariImg); };
+      imgCheck.onerror = () => fetchFromAPI(url, row);
       return;
     }
-    
-    // 方案 B: 非 Mercari 或解析失敗，使用 API
     await fetchFromAPI(url, row);
-    
   } catch (e) {
     const loader = document.getElementById(`img-load-${row}`);
     if (loader) loader.textContent = '無預覽圖';
   }
 }
 
-// 原有的 API 抓取邏輯作為後備
 async function fetchFromAPI(url, row) {
   const res = await fetch(`https://api.linkpreview.net/?key=${LINK_PREVIEW_KEY}&q=${encodeURIComponent(url)}`);
   const data = await res.json();
-  if (data && data.image && !data.image.includes('logo')) { // 排除包含 logo 字眼的圖
+  if (data && data.image && !data.image.includes('logo')) {
     urlPreviewCache.set(url, data.image);
     updateImgWrap(row, data.image);
   } else {
@@ -249,17 +339,9 @@ async function fetchFromAPI(url, row) {
   }
 }
 
-// 統一更新圖片外框的輔助函數
 function updateImgWrap(row, imgSrc) {
   const wrap = document.getElementById(`img-wrap-${row}`);
-  if (wrap) {
-    wrap.innerHTML = `<img src="${escAttr(imgSrc)}" class="card-img"><div class="preview-label">網址預覽</div>`;
-  }
-}
-
-function editPrompt(row, field, oldVal) {
-  const newVal = prompt(`修改 ${field === 'link' ? '商品網址' : '運單編號'}:`, oldVal);
-  if (newVal !== null) updateField(row, field, newVal);
+  if (wrap) wrap.innerHTML = `<img src="${escAttr(imgSrc)}" class="card-img"><div class="preview-label">網址預覽</div>`;
 }
 
 function updateField(row, field, value, isTyping = false) {
@@ -280,37 +362,20 @@ async function saveBatchData() {
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const params = { action: 'saveArrivalData', password: password, row: row };
-    if (data.position !== undefined) params.position = data.position;
-    if (data.custId !== undefined) params.custId = data.custId;
     if (data.image !== undefined) params.image = data.image;
     if (data.weight !== undefined) params.weight = data.weight;
-    if (data.link !== undefined) params.link = data.link;
-    if (data.track !== undefined) {
-      let val = data.track.trim();
-      if (val !== "" && !val.startsWith("送り状番号：")) val = "送り状番号：" + val;
-      params.track = val;
-    }
     if (data.weight && data.weight.toString().trim() !== "") params.arrivalDate = dateVal;
-    else params.arrivalDate = '';
-    
     const body = new URLSearchParams();
-    for (let key in params) body.append(key, params[key]);
+    for (let k in params) body.append(k, params[k]);
     return fetch(API, {method:'POST', body}).then(r => r.json());
   });
 
   try {
     await Promise.all(tasks);
-    const refreshRes = await fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})});
-    const refreshData = await refreshRes.json();
-    if(refreshData.items) {
-      allItems = refreshData.items;
-      pendingUpdates.clear(); editingRows.clear();
-      render(); updateUIStates();
-      alert('儲存成功！');
-    }
-  } catch (err) { alert('儲存失敗：' + err); } finally {
-    btn.disabled = false; btn.textContent = originalBtnText;
-  }
+    doLogin(); // 刷新
+    pendingUpdates.clear(); updateUIStates();
+    alert('儲存成功！');
+  } catch (err) { alert('儲存失敗：' + err); } finally { btn.disabled = false; btn.textContent = originalBtnText; }
 }
 
 function triggerUpload(row, mode) {
@@ -318,11 +383,10 @@ function triggerUpload(row, mode) {
   if(mode === 'cam') inp.setAttribute('capture', 'environment'); else inp.removeAttribute('capture');
   inp.onchange = async () => {
     if(!inp.files[0]) return;
-    document.getElementById('st-' + row).textContent = '上傳中...';
     try {
       const url = await compressAndUpload(inp.files[0]);
       updateField(row, 'image', url);
-    } catch(e) { document.getElementById('st-' + row).textContent = '❌ 失敗'; }
+    } catch(e) { alert('上傳失敗'); }
   };
   inp.click();
 }
@@ -334,20 +398,7 @@ function updateUIStates() {
   document.getElementById('pendingMsg').textContent = `📝 ${count} 項待儲存`;
 }
 
-function clearPendingUpdates() { if (confirm("確定清除？")) { pendingUpdates.clear(); editingRows.clear(); render(); updateUIStates(); } }
-
-function buildArrivalTabs(){
-  const tabs = document.getElementById('arrivalTabs'); tabs.innerHTML = '';
-  let arrivals = [...new Set(allItems.map(i=>i.arrival).filter(a=>a))].sort((a,b)=>groupNum(b)-groupNum(a));
-  ['未到貨', ...arrivals.slice(0,4)].forEach(name => {
-    const t = document.createElement('div');
-    t.style.cssText = `padding:8px 15px; border-radius:20px; background:${currentArrival===name?'#2563eb':'#fff'}; color:${currentArrival===name?'#fff':'#475569'}; border:1px solid #ddd; cursor:pointer; font-size:13px; font-weight:bold; white-space:nowrap;`;
-    t.textContent = name;
-    t.onclick = () => { currentArrival = name; render(); buildArrivalTabs(); };
-    tabs.appendChild(t);
-  });
-}
-
+function clearPendingUpdates() { if (confirm("確定清除？")) { pendingUpdates.clear(); render(); updateUIStates(); } }
 function groupNum(str){ const m = String(str||'').match(/\d+/); return m ? parseInt(m[0],10) : -1; }
 async function compressAndUpload(file) {
   return new Promise((resolve, reject) => {
