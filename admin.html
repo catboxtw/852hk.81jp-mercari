@@ -151,32 +151,44 @@ function doLogin() {
   
   document.getElementById('loginStatus').textContent = '驗證中...';
 
-  // 1. 先抓取主表資料 (Admin Items)
   fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})})
   .then(r => r.json())
   .then(d => {
     if(d.error) throw new Error(d.error);
     allItems = d.items || [];
 
-    // --- 【修正】動態更新「新增商品」彈窗內的下拉選單 ---
+    // --- 【修正版】動態更新下拉選單 ---
     
-    // 更新商店選單：從 allItems 提取所有不重複的 shop 欄位
+    // 1. 更新商店選單
     const shopSelect = document.getElementById('addShop');
-    const shops = [...new Set(allItems.map(i => i.shop).filter(s => s && s.trim() !== ""))].sort();
+    // 這裡同時檢查 .shop 和 .store，防止 GAS 欄位名稱對不上
+    let shops = [...new Set(allItems.map(i => (i.shop || i.store || '').trim()))].filter(s => s !== "");
     
-    // 如果主表沒資料，則使用基本預設值，否則顯示主表出現過的
-    const finalShops = shops.length > 0 ? shops : ["Mercari", "Amazon", "Rakuten", "Yahoo"];
-    shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
-      finalShops.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    if (shops.length > 0) {
+      shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
+        shops.sort().map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    } else {
+      // 若完全沒資料才顯示預設
+      const defaultShops = ["Mercari", "Amazon", "Rakuten", "Yahoo"];
+      shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
+        defaultShops.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    }
 
-    // 更新 Position 選項：同樣從 allItems 提取，若無則用 POS_MAP 預設
+    // 2. 更新 Position 選單
     const posSelect = document.getElementById('addPos');
-    const posFromData = [...new Set(allItems.map(i => i.position).filter(p => p && p.trim() !== ""))].sort();
-    const finalPos = posFromData.length > 0 ? posFromData : Object.values(POS_MAP);
-    posSelect.innerHTML = '<option value="">選擇來源 (Position)...</option>' + 
-      finalPos.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    // 同樣從主表提取出現過的 Position
+    let positions = [...new Set(allItems.map(i => (i.position || i.pos || '').trim()))].filter(p => p !== "");
+    
+    if (positions.length > 0) {
+      posSelect.innerHTML = '<option value="">選擇來源 (Position)...</option>' + 
+        positions.sort().map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    } else {
+      // 若無資料則使用 POS_MAP 的定義
+      posSelect.innerHTML = '<option value="">選擇來源...</option>' + 
+        Object.values(POS_MAP).map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    }
 
-    // 2. 同步抓取客戶 ID 列表
+    // --- 抓取客戶 ID ---
     fetch(API, {method:'POST', body: new URLSearchParams({action:'getCustomerIds', password})})
     .then(r=>r.json())
     .then(res => {
@@ -184,22 +196,21 @@ function doLogin() {
       document.getElementById('idList').innerHTML = allCustomerIds.map(id => `<option value="${esc(id)}">`).join('');
     });
 
-    // 3. 切換介面
+    // --- 切換介面 ---
     document.getElementById('login').style.display = 'none';
     document.getElementById('adminNav').style.display = 'grid';
     document.getElementById('mainPanel').style.display = 'block';
     
-    // 初始化日期框
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('arrivalDateInput').value = today;
-    document.getElementById('addDate').value = today; // 新增商品的日期預設也設為今天
+    document.getElementById('addDate').value = today;
 
     setFilter('todo'); 
     buildArrivalTabs();
   })
   .catch(err => { 
     console.error(err);
-    document.getElementById('loginStatus').textContent = '驗證失敗或密碼錯誤'; 
+    document.getElementById('loginStatus').textContent = '密碼錯誤或連線失敗'; 
   });
 }
 
