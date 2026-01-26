@@ -408,7 +408,11 @@ function updateField(row, field, value, isTyping = false) {
   let data = pendingUpdates.get(row) || {};
   data[field] = value;
   pendingUpdates.set(row, data);
-  if(!isTyping) render(); 
+
+  // 如果是輸入重量，我們將該行加入編輯集合，並重新渲染以顯示橙色框
+  editingRows.add(row); 
+  render(); // 強制刷新以顯示顏色
+
   updateUIStates();
 }
 
