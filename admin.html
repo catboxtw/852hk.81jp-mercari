@@ -340,17 +340,38 @@ card.className = `card-fixed ${isPending ? 'pending-card' : ''} ${isEditing ? 'e
   }
 }
 
-// 補充：點擊按鈕後的執行函數
 function submitEvaluationComplete(row) {
   if(!confirm('確認將此商品標記為已評價？')) return;
   
-  // 這裡調用 GAS 的 completeEvaluation_ 接口
-  google.script.run.withSuccessHandler(() => {
-    // 成功後，本地數據也要更新，或者直接重新加載
-    const item = allItems.find(i => i.row === row);
-    if(item) item.status = ''; 
-    render();
-  }).completeEvaluation_(row);
+  // 找到按鈕並顯示處理中
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '處理中...';
+
+  // 使用 google.script.run 調用後台函數
+  google.script.run
+    .withSuccessHandler((res) => {
+      if(res.error) {
+        alert('錯誤: ' + res.error);
+        btn.disabled = false;
+        btn.textContent = originalText;
+      } else {
+        // --- 重要：成功後立即更新本地資料 ---
+        const itemIndex = allItems.findIndex(i => i.row === row);
+        if (itemIndex !== -1) {
+          allItems[itemIndex].status = ''; // 清除狀態
+        }
+        render(); // 重新渲染，卡片會因為狀態改變而從「未評價」分頁消失
+        alert('已成功移至已完成！');
+      }
+    })
+    .withFailureHandler((err) => {
+      alert('發送失敗，請檢查網路連線');
+      btn.disabled = false;
+      btn.textContent = originalText;
+    })
+    .completeEvaluation_(row); // 呼叫 GAS 函數
 }
 
 // 異步抓取網址預覽圖 (針對 Mercari 優化版)
