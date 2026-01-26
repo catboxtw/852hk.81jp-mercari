@@ -96,7 +96,8 @@ input[type="date"].modal-input {
   <div id="mainPanel" style="display:none">
 <div class="filter-bar">
   <button class="filter-btn active" id="f-todo" onclick="setFilter('todo')">未完成</button>
-  <button class="filter-btn" id="f-unrated" onclick="setFilter('unrated')">未評價</button> <button class="filter-btn" id="f-completed" onclick="setFilter('completed')">已評價</button> <button class="filter-btn" id="f-done" onclick="setFilter('done')">已磅重</button>
+  <button class="filter-btn" id="f-unrated" onclick="setFilter('unrated')">未評價</button>
+  <button class="filter-btn" id="f-done" onclick="setFilter('done')">已完成</button>
   <button class="filter-btn" id="f-all" onclick="setFilter('all')">全部</button>
 </div>
     <div id="arrivalTabs" style="display:flex; gap:8px; margin-bottom:15px; overflow-x:auto; padding-bottom:5px;"></div>
@@ -140,13 +141,14 @@ let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
 function setFilter(type) {
   currentFilter = type;
   
-  // 更新按鈕高亮狀態
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if(btn.id === 'f-' + type) btn.classList.add('active');
-  });
+  // 移除所有按鈕的 active 樣式
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  
+  // 根據 ID 幫點擊的按鈕加上 active
+  const activeBtn = document.getElementById('f-' + type);
+  if (activeBtn) activeBtn.classList.add('active');
 
-  render(); // 這裡直接調用 render 即可，render 內部會處理 filter
+  render(); // 重新渲染列表
 }
 
 function doLogin() {
@@ -223,17 +225,21 @@ async function render() {
   const listEl = document.getElementById('list');
   listEl.innerHTML = '';
 
-  // 1. 分層過濾邏輯
+// 1. 分層過濾邏輯
   let items = allItems.filter(i => {
-// 在 render 函數中 items.filter 邏輯內確認這行
-if (currentFilter === 'unrated') return String(i.status).trim() === '未評價';
-if (currentFilter === 'completed') return !i.status || String(i.status).trim() === '';
+    // 1. 未評價頁面：顯示 AC 欄有 "未評價" 字樣的
+    if (currentFilter === 'unrated') return String(i.status).trim() === '未評價';
     
-    // 原有的 todo / done 邏輯
+    // 2. 已完成頁面：顯示已經上傳圖片 (i.image) 且 AC 欄已清空的
+    if (currentFilter === 'done') return !!i.image && !i.status;
+    
+    // 3. 未完成頁面：顯示還沒有上傳圖片的
     if (currentFilter === 'todo') return !i.image;
-    if (currentFilter === 'done') return !!i.image;
+    
+    // 4. 全部頁面
     return true;
   }).filter(i => {
+    // 原有的日期過濾邏輯保持不變
     const arr = String(i.arrival || '').trim();
     return (currentArrival === '未到貨') ? (!arr) : (arr === currentArrival);
   });
