@@ -94,11 +94,11 @@ input[type="date"].modal-input {
   </div>
 
   <div id="mainPanel" style="display:none">
-    <div class="filter-bar">
-      <button class="filter-btn" id="f-todo" onclick="setFilter('todo')">未完成</button>
-      <button class="filter-btn" id="f-done" onclick="setFilter('done')">已完成</button>
-      <button class="filter-btn" id="f-all" onclick="setFilter('all')">全部</button>
-    </div>
+<div class="filter-bar">
+  <button class="filter-btn active" id="f-todo" onclick="setFilter('todo')">未完成</button>
+  <button class="filter-btn" id="f-unrated" onclick="setFilter('unrated')">未評價</button> <button class="filter-btn" id="f-completed" onclick="setFilter('completed')">已評價</button> <button class="filter-btn" id="f-done" onclick="setFilter('done')">已磅重</button>
+  <button class="filter-btn" id="f-all" onclick="setFilter('all')">全部</button>
+</div>
     <div id="arrivalTabs" style="display:flex; gap:8px; margin-bottom:15px; overflow-x:auto; padding-bottom:5px;"></div>
     <div id="addModal" class="modal">
   <div class="modal-content">
@@ -139,16 +139,14 @@ let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
 
 function setFilter(type) {
   currentFilter = type;
-  let filtered = allItems;
   
-  if (type === 'unrated') {
-    // 顯示 AC 欄等於「未評價」的商品
-    filtered = allItems.filter(it => it.status === '未評價');
-  } else if (type === 'completed') {
-    // 顯示 AC 欄已經清空的商品
-    filtered = allItems.filter(it => it.status === '');
-  }
-  render(filtered);
+  // 更新按鈕高亮狀態
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if(btn.id === 'f-' + type) btn.classList.add('active');
+  });
+
+  render(); // 這裡直接調用 render 即可，render 內部會處理 filter
 }
 
 function doLogin() {
@@ -227,9 +225,9 @@ async function render() {
 
   // 1. 分層過濾邏輯
   let items = allItems.filter(i => {
-    // --- 新增：未評價與已完成的分類邏輯 ---
-    if (currentFilter === 'unrated') return i.status === '未評價';
-    if (currentFilter === 'completed') return !i.status || i.status === '';
+// 在 render 函數中 items.filter 邏輯內確認這行
+if (currentFilter === 'unrated') return String(i.status).trim() === '未評價';
+if (currentFilter === 'completed') return !i.status || String(i.status).trim() === '';
     
     // 原有的 todo / done 邏輯
     if (currentFilter === 'todo') return !i.image;
