@@ -41,7 +41,22 @@
 /* 彈出視窗基礎樣式 */
   .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center; }
   .modal-content { background:#fff; width:92%; max-width:400px; padding:20px; border-radius:16px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-  .modal-input { padding:12px; border:1px solid #ddd; border-radius:8px; font-size:14px; width:100%; outline:none; }
+  .modal-input { 
+  padding: 10px 12px; /* 稍微縮減上下 padding */
+  border: 1px solid #ddd; 
+  border-radius: 8px; 
+  font-size: 14px; 
+  width: 100%; 
+  outline: none; 
+  height: 45px; /* 強制所有輸入框高度統一 */
+  display: block;
+  -webkit-appearance: none; /* 移除 iOS 預設樣式 */
+}
+
+/* 針對日期框內部的特殊調整 */
+input[type="date"].modal-input {
+  line-height: 1.5;
+}
   .modal-input:focus { border-color: var(--primary-color); }
   .add-item-btn { width:100%; padding:15px; background:#fff; border:2px dashed #cbd5e1; border-radius:12px; color:#64748b; font-weight:bold; margin-top:20px; cursor:pointer; }
 </style>
@@ -133,35 +148,59 @@ function doLogin() {
   const pwInput = document.getElementById('pw');
   password = pwInput.value.trim();
   if(!password) return;
+  
   document.getElementById('loginStatus').textContent = '驗證中...';
-  fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})})
-  .then(r => r.json()).then(d => {
-      if(d.error) throw new Error(d.error);
-      allItems = d.items || [];
-      fetch(API, {method:'POST', body: new URLSearchParams({action:'getCustomerIds', password})}).then(r=>r.json()).then(res => {
-          allCustomerIds = res.ids || [];
-          document.getElementById('idList').innerHTML = allCustomerIds.map(id => `<option value="${esc(id)}">`).join('');
-          
-          // --- 新增：動態填入商店選項 (從你 Data Sheet 的資料中提取) ---
-          const shopSelect = document.getElementById('addShop');
-          const shops = [...new Set(allItems.map(i => i.shop).filter(s => s))]; // 從現有資料抓取商店
-          if (shops.length === 0) { // 如果主表沒資料，提供預設
-             shops.push("Mercari", "Amazon", "Rakuten", "Yahoo");
-          }
-          shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
-            shops.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
 
-          // --- 新增：動態填入 Position 選項 (從 POS_MAP 提取) ---
-          const posSelect = document.getElementById('addPos');
-          posSelect.innerHTML = '<option value="">選擇來源...</option>' + 
-            Object.values(POS_MAP).map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
-      });
-      document.getElementById('login').style.display = 'none';
-      document.getElementById('adminNav').style.display = 'grid';
-      document.getElementById('mainPanel').style.display = 'block';
-      document.getElementById('arrivalDateInput').value = new Date().toISOString().split('T')[0];
-      setFilter('todo'); buildArrivalTabs();
-  }).catch(err => { document.getElementById('loginStatus').textContent = '密碼錯誤'; });
+  // 1. 先抓取主表資料 (Admin Items)
+  fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})})
+  .then(r => r.json())
+  .then(d => {
+    if(d.error) throw new Error(d.error);
+    allItems = d.items || [];
+
+    // --- 【修正】動態更新「新增商品」彈窗內的下拉選單 ---
+    
+    // 更新商店選單：從 allItems 提取所有不重複的 shop 欄位
+    const shopSelect = document.getElementById('addShop');
+    const shops = [...new Set(allItems.map(i => i.shop).filter(s => s && s.trim() !== ""))].sort();
+    
+    // 如果主表沒資料，則使用基本預設值，否則顯示主表出現過的
+    const finalShops = shops.length > 0 ? shops : ["Mercari", "Amazon", "Rakuten", "Yahoo"];
+    shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
+      finalShops.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+    // 更新 Position 選項：同樣從 allItems 提取，若無則用 POS_MAP 預設
+    const posSelect = document.getElementById('addPos');
+    const posFromData = [...new Set(allItems.map(i => i.position).filter(p => p && p.trim() !== ""))].sort();
+    const finalPos = posFromData.length > 0 ? posFromData : Object.values(POS_MAP);
+    posSelect.innerHTML = '<option value="">選擇來源 (Position)...</option>' + 
+      finalPos.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+
+    // 2. 同步抓取客戶 ID 列表
+    fetch(API, {method:'POST', body: new URLSearchParams({action:'getCustomerIds', password})})
+    .then(r=>r.json())
+    .then(res => {
+      allCustomerIds = res.ids || [];
+      document.getElementById('idList').innerHTML = allCustomerIds.map(id => `<option value="${esc(id)}">`).join('');
+    });
+
+    // 3. 切換介面
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('adminNav').style.display = 'grid';
+    document.getElementById('mainPanel').style.display = 'block';
+    
+    // 初始化日期框
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('arrivalDateInput').value = today;
+    document.getElementById('addDate').value = today; // 新增商品的日期預設也設為今天
+
+    setFilter('todo'); 
+    buildArrivalTabs();
+  })
+  .catch(err => { 
+    console.error(err);
+    document.getElementById('loginStatus').textContent = '驗證失敗或密碼錯誤'; 
+  });
 }
 
 async function render() {
