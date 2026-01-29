@@ -225,26 +225,18 @@ async function render() {
   const listEl = document.getElementById('list');
   listEl.innerHTML = '';
 
-// 1. 分層過濾邏輯
+  // 1. 分層過濾邏輯
   let items = allItems.filter(i => {
-    // 1. 未評價頁面：顯示 AC 欄有 "未評價" 字樣的
     if (currentFilter === 'unrated') return String(i.status).trim() === '未評價';
-    
-    // 2. 已完成頁面：顯示已經上傳圖片 (i.image) 且 AC 欄已清空的
     if (currentFilter === 'done') return !!i.image && !i.status;
-    
-    // 3. 未完成頁面：顯示還沒有上傳圖片的
     if (currentFilter === 'todo') return !i.image;
-    
-    // 4. 全部頁面
     return true;
   }).filter(i => {
-    // 原有的日期過濾邏輯保持不變
     const arr = String(i.arrival || '').trim();
     return (currentArrival === '未到貨') ? (!arr) : (arr === currentArrival);
   });
   
-// --- 新增：如果是在未評價分頁，顯示「全頁一鍵完成」按鈕 ---
+  // 2. 一鍵完成按鈕
   if (currentFilter === 'unrated' && items.length > 0) {
     const batchBtn = document.createElement('button');
     batchBtn.innerHTML = `✅ 一鍵完成本頁所有評價 (${items.length} 項)`;
@@ -263,20 +255,19 @@ async function render() {
     const displayLink = pData.link !== undefined ? pData.link : (it.link || '');
     const displayTrack = pData.track !== undefined ? pData.track : (it.track || '');
 
-    // --- 2. 處理未評價模式下的網址轉換 ---
     const isUnratedMode = (currentFilter === 'unrated');
     let finalLink = displayLink;
     if (isUnratedMode && finalLink && finalLink.includes('mercari.com/item/')) {
-      // 僅在顯示時替換，不改動原始資料
       finalLink = finalLink.replace('/item/', '/transaction/');
     }
 
     const shouldLock = (it.position || it.custId) && !editingRows.has(it.row) && !isPending;
-    const isEditing = editingRows.has(it.row); // 判斷是否正在編輯中
-const card = document.createElement('div');
-card.className = `card-fixed ${isPending ? 'pending-card' : ''} ${isEditing ? 'editing-card' : ''}`;
+    const isEditing = editingRows.has(it.row);
+
+    const card = document.createElement('div');
+    // 這裡確保 class 正確切換
+    card.className = `card-fixed ${isPending ? 'pending-card' : ''} ${isEditing ? 'editing-card' : ''}`;
     
-    // 圖片顯示邏輯保持不變
     let finalImgHtml = `<div style="line-height:90px; color:#ccc; font-size:12px;">無圖</div>`;
     if (displayImg) {
       finalImgHtml = `<img src="${escAttr(displayImg)}" class="card-img">`;
@@ -290,7 +281,6 @@ card.className = `card-fixed ${isPending ? 'pending-card' : ''} ${isEditing ? 'e
       }
     }
 
-    // Position 與 ID HTML 保持不變
     let posAndIdHtml = shouldLock ? 
       `<div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; background: #f1f5f9; padding: 8px; border-radius: 8px;">
           <div style="font-size: 13px; font-weight: bold; color: #1e293b;">📍 ${esc(displayPos)}</div>
@@ -304,38 +294,35 @@ card.className = `card-fixed ${isPending ? 'pending-card' : ''} ${isEditing ? 'e
        <div class="pos-label">Customer ID:</div>
        <input type="text" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
 
-    // --- 3. 組合卡片內容，加入「一鍵完成評價」按鈕 ---
     card.innerHTML = `
       <div class="card-left">
         <div class="code-tag">${esc(it.code || '無編號')}</div>
-        
         <a class="url-text" href="${finalLink}" target="_blank" rel="noopener" 
            style="${isUnratedMode ? 'color:#2563eb; font-weight:bold; text-decoration:underline; font-size:14px;' : ''}">
            ${finalLink ? esc(finalLink) : '(無網址)'}
         </a>
-
         <div style="font-weight:bold; font-size:14px; color:#1e293b; margin-bottom:2px; cursor:pointer;" onclick="editPrompt(${it.row}, 'link', '${escAttr(displayLink)}')">${esc(it.item)}</div>
         <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 現有日期: <span style="font-weight:bold;">${it.arrivalDate || '未到貨'}</span></div>
-        
         ${posAndIdHtml}
-        
         <div class="weight-row">
-          <input type="number" step="0.001" class="weight-input" value="${displayWeight}" placeholder="0.000" oninput="updateField(${it.row}, 'weight', this.value, true)">
+          <input type="number" 
+                 inputmode="decimal" 
+                 step="0.001" 
+                 class="weight-input" 
+                 value="${displayWeight}" 
+                 placeholder="0.000" 
+                 oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
         </div>
-        
         <div>
           ${displayTrack ? `<span class="green-tag" onclick="editPrompt(${it.row}, 'track', '${esc(displayTrack)}')">${esc(displayTrack)}</span>` : `<span style="font-size:11px; color:#94a3b8; cursor:pointer;" onclick="editPrompt(${it.row}, 'track', '')">+ 運單</span>`}
         </div>
-
         ${isUnratedMode ? `
-          <button onclick="submitEvaluationComplete(${it.row})" 
-                  style="width:100%; margin-top:10px; padding:10px; background:#059669; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
+          <button onclick="submitEvaluationComplete(${it.row})" style="width:100%; margin-top:10px; padding:12px; background:#059669; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
             ✅ 已完成評價 (移至完成)
           </button>
         ` : ''}
       </div>
-      
       <div class="card-right">
         <div class="card-img-wrap" id="img-wrap-${it.row}">${finalImgHtml}</div>
         <div style="display:flex; gap:4px; justify-content:center">
@@ -470,15 +457,35 @@ function editPrompt(row, field, oldVal) {
 }
 
 function updateField(row, field, value, isTyping = false) {
+  // 更新記憶體資料
   let data = pendingUpdates.get(row) || {};
   data[field] = value;
   pendingUpdates.set(row, data);
+  
+  // 標記該行為編輯狀態
+  editingRows.add(row);
 
-  // 如果是輸入重量，我們將該行加入編輯集合，並重新渲染以顯示橙色框
-  editingRows.add(row); 
-  render(); // 強制刷新以顯示顏色
-
-  updateUIStates();
+  // 如果正在打字，不重新 render() 以免輸入框消失
+  if (isTyping) {
+    updateUIStates(); // 顯示儲存按鈕
+    
+    // 手動幫這張卡片加上「編輯中」的 CSS 樣式，而不刷新整個頁面
+    const inputEl = event.target;
+    const cardEl = inputEl.closest('.card-fixed');
+    if (cardEl) {
+      cardEl.classList.add('editing-card');
+      cardEl.classList.add('pending-card');
+    }
+    
+    // 手動更新圖片下方的待儲存狀態文字
+    const stEl = document.getElementById('st-' + row);
+    if (stEl) stEl.textContent = '⏳ 待儲存';
+    
+  } else {
+    // 如果是點擊按鈕（如 Position），則可以直接 render
+    render();
+    updateUIStates();
+  }
 }
 
 async function saveBatchData() {
