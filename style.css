@@ -311,20 +311,68 @@ hr{border:none;border-top:1px solid #e7e7e7;margin:18px 0;}
     background: #fee2e2; border-color: #ef4444; color: #b91c1c; font-weight: bold; 
     box-shadow: 0 0 0 1px #ef4444;
   }
-  /* ID 輸入框樣式 */
-  .id-input { width: 100%; padding: 8px; border: 2px solid #cbd5e1; border-radius: 8px; margin-top: 5px; font-size: 14px; }
 
-/* 正在修改中的商品卡樣式 */
-.editing-card {
-  border: 2px solid #f97316 !important; /* 橙色邊框 */
-  background-color: #fffaf5 !important; /* 極淡橙色背景 */
-  box-shadow: 0 0 10px rgba(249, 115, 22, 0.2); /* 淡淡的橙色發光感 */
-  position: relative;
-  z-index: 10; /* 確保邊框不會被遮擋 */
+/* --- 1. 輸入框基礎樣式 (統一防止縮放) --- */
+.id-input, .weight-input, .modal-input {
+  width: 100%;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 16px !important; /* 強制 16px 防止 iOS 縮放 */
 }
 
-/* 確保原本的 card-fixed 有過渡效果，看起來更平滑 */
+/* --- 2. 各別輸入框細節 --- */
+.id-input {
+  padding: 8px;
+  border: 2px solid #cbd5e1;
+  margin-top: 5px;
+}
+
+.weight-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+
+.modal-input {
+  height: 45px;
+  margin-bottom: 12px;
+  padding: 0 12px;
+  border: 1px solid #ddd;
+  display: block;
+}
+
+/* --- 3. 重量列布局 --- */
+.weight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.weight-unit {
+  font-weight: bold;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* --- 4. 卡片狀態樣式 --- */
 .card-fixed {
   transition: border 0.2s ease, background-color 0.2s ease;
-  border: 1px solid #e2e8f0; /* 原本的顏色 */
+  border: 1px solid #e2e8f0; /* 預設邊框 */
+  /* 確保原本的 card-fixed 屬性也在這裏生效 */
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr);
+  gap: 12px;
+  background: #fff;
+  margin: 10px 0;
+  padding: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,.1);
+}
+
+.editing-card {
+  border: 2px solid #f97316 !important; /* 修改中變橙色 */
+  background-color: #fff7ed !important; /* 淺橙色背景 */
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.2);
+  position: relative;
+  z-index: 10;
 }
