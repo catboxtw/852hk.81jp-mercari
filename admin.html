@@ -491,18 +491,20 @@ function updateField(row, field, value, isTyping = false) {
 async function saveBatchData() {
   if (pendingUpdates.size === 0) return;
   if (!confirm("確定儲存全部修改？")) return;
+  
   const btn = document.querySelector('#batchBar button:last-child');
   const originalBtnText = btn.textContent;
-  btn.disabled = true; btn.textContent = '儲存中...';
+  btn.disabled = true; 
+  btn.textContent = '儲存中...';
 
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
-const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
+  
+  const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const params = { action: 'saveArrivalData', password: password, row: row };
     
-    // --- 新增/修改邏輯開始 ---
-    // 檢查是否有輸入重量
+    // --- 核心修正：判斷是否填寫了重量 ---
     const hasWeight = data.weight !== undefined && data.weight.toString().trim() !== "";
-    
+
     if (data.position !== undefined) params.position = data.position;
     if (data.custId !== undefined) params.custId = data.custId;
     if (data.image !== undefined) params.image = data.image;
@@ -514,21 +516,42 @@ const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
       params.track = val;
     }
 
-    // 當有重量時，設定到貨日期，並自動填入「未評價」到 AC 欄
+    // 當填寫重量時，自動更新：
+    // 1. 到貨日期 (P欄)
+    // 2. 狀態設為「未評價」 (AC欄)
     if (hasWeight) {
       params.arrivalDate = dateVal;
-      params.status = '未評價'; // 這裡對應後台的 AC 欄
+      params.status = '未評價'; 
     } else {
-      params.arrivalDate = '';
-      // 如果原本就有 status (例如手動改的)，則保留；否則不傳送以防清空
+      // 若沒重量但有單獨修改 status (例如手動完成)，則保留該狀態
       if (data.status !== undefined) params.status = data.status;
     }
-    // --- 新增/修改邏輯結束 ---
     
     const body = new URLSearchParams();
     for (let key in params) body.append(key, params[key]);
     return fetch(API, {method:'POST', body}).then(r => r.json());
   });
+
+  try {
+    await Promise.all(tasks);
+    // 儲存後重新抓取資料
+    const refreshRes = await fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})});
+    const refreshData = await refreshRes.json();
+    if(refreshData.items) {
+      allItems = refreshData.items;
+      pendingUpdates.clear(); 
+      editingRows.clear();
+      render(); 
+      updateUIStates();
+      alert('儲存成功！已自動標記為「未評價」並填入日期。');
+    }
+  } catch (err) { 
+    alert('儲存失敗：' + err); 
+  } finally {
+    btn.disabled = false; 
+    btn.textContent = originalBtnText;
+  }
+}
 
   try {
     await Promise.all(tasks);
