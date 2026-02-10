@@ -497,12 +497,14 @@ async function saveBatchData() {
   btn.disabled = true; 
   btn.textContent = '儲存中...';
 
+  // 取得上方輸入框的到貨日期
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
   
+  // 準備所有儲存任務
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const params = { action: 'saveArrivalData', password: password, row: row };
     
-    // --- 核心修正：判斷是否填寫了重量 ---
+    // 判斷是否有填寫重量，若有，則觸發「未評價」標籤
     const hasWeight = data.weight !== undefined && data.weight.toString().trim() !== "";
 
     if (data.position !== undefined) params.position = data.position;
@@ -510,61 +512,50 @@ async function saveBatchData() {
     if (data.image !== undefined) params.image = data.image;
     if (data.weight !== undefined) params.weight = data.weight;
     if (data.link !== undefined) params.link = data.link;
+    
+    // 處理運單編號前綴
     if (data.track !== undefined) {
       let val = data.track.trim();
       if (val !== "" && !val.startsWith("送り状番号：")) val = "送り状番号：" + val;
       params.track = val;
     }
 
-    // 當填寫重量時，自動更新：
-    // 1. 到貨日期 (P欄)
-    // 2. 狀態設為「未評價」 (AC欄)
+    // 當填寫重量時，自動更新日期與狀態
     if (hasWeight) {
       params.arrivalDate = dateVal;
       params.status = '未評價'; 
     } else {
-      // 若沒重量但有單獨修改 status (例如手動完成)，則保留該狀態
       if (data.status !== undefined) params.status = data.status;
     }
     
+    // 封裝成 POST 請求
     const body = new URLSearchParams();
     for (let key in params) body.append(key, params[key]);
     return fetch(API, {method:'POST', body}).then(r => r.json());
-  });
+  }); // 這裡結束 .map
 
   try {
     await Promise.all(tasks);
-    // 儲存後重新抓取資料
-    const refreshRes = await fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})});
+    // 儲存成功後，模擬重新登入以刷新最新資料
+    const refreshRes = await fetch(API, {
+      method: 'POST', 
+      body: new URLSearchParams({action:'getAdminItems', password})
+    });
     const refreshData = await refreshRes.json();
+    
     if(refreshData.items) {
       allItems = refreshData.items;
       pendingUpdates.clear(); 
       editingRows.clear();
       render(); 
       updateUIStates();
-      alert('儲存成功！已自動標記為「未評價」並填入日期。');
+      alert('儲存成功！已標記為「未評價」。');
     }
   } catch (err) { 
     alert('儲存失敗：' + err); 
   } finally {
     btn.disabled = false; 
     btn.textContent = originalBtnText;
-  }
-}
-
-  try {
-    await Promise.all(tasks);
-    const refreshRes = await fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})});
-    const refreshData = await refreshRes.json();
-    if(refreshData.items) {
-      allItems = refreshData.items;
-      pendingUpdates.clear(); editingRows.clear();
-      render(); updateUIStates();
-      alert('儲存成功！');
-    }
-  } catch (err) { alert('儲存失敗：' + err); } finally {
-    btn.disabled = false; btn.textContent = originalBtnText;
   }
 }
 
