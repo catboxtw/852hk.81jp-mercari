@@ -496,8 +496,13 @@ async function saveBatchData() {
   btn.disabled = true; btn.textContent = '儲存中...';
 
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
-  const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
+const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const params = { action: 'saveArrivalData', password: password, row: row };
+    
+    // --- 新增/修改邏輯開始 ---
+    // 檢查是否有輸入重量
+    const hasWeight = data.weight !== undefined && data.weight.toString().trim() !== "";
+    
     if (data.position !== undefined) params.position = data.position;
     if (data.custId !== undefined) params.custId = data.custId;
     if (data.image !== undefined) params.image = data.image;
@@ -508,8 +513,17 @@ async function saveBatchData() {
       if (val !== "" && !val.startsWith("送り状番号：")) val = "送り状番号：" + val;
       params.track = val;
     }
-    if (data.weight && data.weight.toString().trim() !== "") params.arrivalDate = dateVal;
-    else params.arrivalDate = '';
+
+    // 當有重量時，設定到貨日期，並自動填入「未評價」到 AC 欄
+    if (hasWeight) {
+      params.arrivalDate = dateVal;
+      params.status = '未評價'; // 這裡對應後台的 AC 欄
+    } else {
+      params.arrivalDate = '';
+      // 如果原本就有 status (例如手動改的)，則保留；否則不傳送以防清空
+      if (data.status !== undefined) params.status = data.status;
+    }
+    // --- 新增/修改邏輯結束 ---
     
     const body = new URLSearchParams();
     for (let key in params) body.append(key, params[key]);
