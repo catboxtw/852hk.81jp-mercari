@@ -1,121 +1,131 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>📦 執貨清單</title>
 <style>
   :root { --primary: #2563eb; --hk-color: #1e40af; --tw-color: #7c3aed; }
-  body { font-family: -apple-system, sans-serif; background: #f8fafc; margin: 0; padding: 15px; }
-  .header { text-align: center; margin-bottom: 20px; position: relative; }
-  .back-btn { position: absolute; left: 0; top: 5px; background: none; border: none; font-size: 16px; color: var(--primary); cursor: pointer; }
+  body { font-family: -apple-system, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
   
+  /* 導覽列 */
+  .admin-nav { display: flex; justify-content: space-around; background: #fff; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+  .nav-btn { background: none; border: none; font-size: 12px; cursor: pointer; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .nav-btn span { font-size: 18px; }
+  .nav-btn.active { color: var(--primary); font-weight: bold; }
+
+  /* 登入區 */
+  #loginPanel { padding: 50px 20px; text-align: center; }
+  .login-input { padding: 12px; width: 200px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; }
+  .login-btn { padding: 12px 30px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: bold; }
+
+  /* 主面板 */
+  #mainPanel { padding: 15px; display: none; }
+  
+  /* 團號分頁 (Tabs) */
+  #groupTabs { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; white-space: nowrap; }
+  .tab-btn { padding: 8px 16px; background: #e2e8f0; border: none; border-radius: 20px; font-size: 14px; cursor: pointer; }
+  .tab-btn.active { background: var(--primary); color: #fff; }
+
+  /* 大紅框 */
   .region-section { background: #fff; border-radius: 15px; padding: 15px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 5px solid; }
   .hk-section { border-top-color: var(--hk-color); }
   .tw-section { border-top-color: var(--tw-color); }
-  
   .region-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
   .total-weight { font-size: 13px; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; }
 
-  /* 大紅框外層佈局 */
-  .cust-card { 
-    display: flex; 
-    align-items: center; 
-    border: 2.5px solid #ef4444; 
-    border-radius: 12px; 
-    margin-bottom: 20px; 
-    background: #fff;
-    overflow: hidden;
-  }
-
-  /* 左側最小編號大框 */
-  .min-code-side {
-    background: #ef4444;
-    color: #fff;
-    font-size: 32px;
-    font-weight: 900;
-    width: 60px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    align-self: stretch; /* 確保高度撐滿 */
-    border-right: 2.5px solid #ef4444;
-  }
-
-  /* 右側資訊區 */
-  .cust-info-side {
-    flex: 1;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center; /* 置中資訊 */
-    text-align: center;
-  }
-
-  .cust-name { 
-    font-weight: bold; 
-    font-size: 18px; 
-    color: #1e293b; 
-    margin-bottom: 8px;
-  }
+  .cust-card { display: flex; border: 2.5px solid #ef4444; border-radius: 12px; margin-bottom: 20px; background: #fff; overflow: hidden; }
+  .min-code-side { background: #ef4444; color: #fff; font-size: 32px; font-weight: 900; width: 60px; display: flex; align-items: center; justify-content: center; align-self: stretch; }
+  .cust-info-side { flex: 1; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .cust-name { font-weight: bold; font-size: 18px; color: #1e293b; margin-bottom: 12px; }
   
-  /* 細黃框容器 */
-  .code-container { 
-    display: flex; 
-    flex-wrap: wrap; 
-    gap: 8px; 
-    justify-content: center; 
-  }
-
-  /* 細黃框樣式 */
-  .code-box { 
-    border: 1.5px solid #f59e0b; 
-    background: #fffbeb; 
-    color: #92400e; 
-    padding: 4px 10px; 
-    border-radius: 6px; 
-    font-weight: bold; 
-    font-size: 16px; 
-  }
+  /* 商品顯示容器 */
+  .code-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .item-box { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1.5px solid #f59e0b; background: #fffbeb; padding: 5px; border-radius: 8px; }
+  .code-num { font-weight: bold; font-size: 16px; color: #92400e; }
+  .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: #eee; }
 
   .loading { text-align: center; padding: 50px; color: #64748b; }
 </style>
 </head>
 <body>
 
-<div id="content">載入中...</div>
+<div class="admin-nav" id="adminNav" style="display:none">
+  <button class="nav-btn" onclick="location.href='index.html'"><span>🔍</span>查詢 ID</button>
+  <button class="nav-btn" onclick="location.href='admin.html'"><span>⚖️</span>到貨磅重</button>
+  <button class="nav-btn active" onclick="location.href='pick-list.html'"><span>📦</span>執貨</button>
+  <button class="nav-btn" onclick="alert('開發中')"><span>📢</span>通知客人</button>
+</div>
+
+<div id="loginPanel">
+  <h2>📦 執貨系統登入</h2>
+  <input type="password" id="pw" class="login-input" placeholder="請輸入管理員密碼">
+  <br>
+  <button class="login-btn" onclick="doLogin()">登入</button>
+</div>
+
+<div id="mainPanel">
+  <div id="groupTabs"></div>
+  <div id="mainContent"></div>
+</div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycby2I6Q2M67npEFW-Vqi14JS3L7rtuQ9DLD35KwhwCaGpyt3xBnRfNyeLcOGXfslA9sx/exec'; // 這裡填入你的 GAS 網址
-const password = '4916';
+const API = '你的_GAS_部署網址';
+let GLOBAL_DATA = null;
+let CURRENT_GROUP = "";
+
+function doLogin() {
+  const pw = document.getElementById('pw').value;
+  if (pw === '4916') {
+    document.getElementById('loginPanel').style.display = 'none';
+    document.getElementById('mainPanel').style.display = 'block';
+    document.getElementById('adminNav').style.display = 'flex';
+    loadData();
+  } else {
+    alert('密碼錯誤');
+  }
+}
 
 function loadData() {
+  const content = document.getElementById('mainContent');
+  content.innerHTML = '<div class="loading">正在優化讀取大數據中...請稍候...</div>';
+  
   fetch(API, {
     method: 'POST',
-    body: new URLSearchParams({ action: 'getPickListData', password: password })
+    body: new URLSearchParams({ action: 'getPickListData', password: '4916' })
   })
   .then(r => r.json())
   .then(data => {
-    if (!data.allGroups) return;
-    render(data);
+    GLOBAL_DATA = data.allGroups;
+    CURRENT_GROUP = data.latestGroup;
+    renderTabs();
+    renderGroup(CURRENT_GROUP);
   });
 }
 
-function render(data) {
+function renderTabs() {
+  const tabs = document.getElementById('groupTabs');
+  const groupNames = Object.keys(GLOBAL_DATA).reverse(); // 最新團在前
+  tabs.innerHTML = groupNames.map(name => 
+    `<button class="tab-btn ${name === CURRENT_GROUP ? 'active' : ''}" onclick="switchGroup('${name}')">${name}</button>`
+  ).join('');
+}
+
+function switchGroup(name) {
+  CURRENT_GROUP = name;
+  renderTabs();
+  renderGroup(name);
+}
+
+function renderGroup(groupName) {
   const container = document.getElementById('mainContent');
-  container.innerHTML = '';
-  
-  const groupName = data.latestGroup;
-  document.getElementById('pageTitle').innerText = `📦 ${groupName} 執貨清單`;
-  
-  const groups = data.allGroups[groupName];
+  const groups = GLOBAL_DATA[groupName];
   if (!groups) {
-    container.innerHTML = `<div class="loading">找不到 ${groupName} 的訂單資料</div>`;
+    container.innerHTML = `<div class="loading">此團無資料</div>`;
     return;
   }
 
+  container.innerHTML = '';
   ['HK', 'TW'].forEach(regionKey => {
     const info = groups[regionKey];
     if (Object.keys(info.customers).length === 0) return;
@@ -123,41 +133,35 @@ function render(data) {
     const label = regionKey === 'HK' ? '🇭🇰 香港團' : '🇹🇼 台灣團';
     const cssClass = regionKey === 'HK' ? 'hk-section' : 'tw-section';
 
-    let html = `
-      <div class="region-section ${cssClass}">
-        <div class="region-title">
-          ${label}
-          <span class="total-weight">總重: ${info.totalWeight.toFixed(3)} kg</span>
-        </div>
-    `;
+    let html = `<div class="region-section ${cssClass}"><div class="region-title">${label} <span class="total-weight">總重: ${info.totalWeight.toFixed(3)} kg</span></div>`;
 
-    // 排序客人
     const sortedCustIds = Object.keys(info.customers).sort();
-
     sortedCustIds.forEach(custId => {
-      const codes = info.customers[custId].map(Number).sort((a, b) => a - b);
-      const minCode = codes.length > 0 ? codes[0] : '-'; // 取出最小數字
+      // 排序商品並取最小號
+      const items = info.customers[custId].sort((a, b) => Number(a.code) - Number(b.code));
+      const minCode = items.length > 0 ? items[0].code : '-';
 
       html += `
         <div class="cust-card">
           <div class="min-code-side">${minCode}</div>
-          
           <div class="cust-info-side">
             <div class="cust-name">${custId}</div>
             <div class="code-container">
-              ${codes.map(c => `<div class="code-box">${c}</div>`).join('')}
+              ${items.map(item => `
+                <div class="item-box">
+                  ${item.img ? `<img src="${item.img}" class="thumb" loading="lazy">` : `<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#ccc">無圖</div>`}
+                  <div class="code-num">#${item.code}</div>
+                </div>
+              `).join('')}
             </div>
           </div>
         </div>
       `;
     });
-
     html += `</div>`;
     container.innerHTML += html;
   });
 }
-
-loadData();
 </script>
 </body>
 </html>
