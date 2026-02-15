@@ -125,8 +125,18 @@ const CLOUD_FOLDER = 'mercari';
 const LINK_PREVIEW_KEY = '03b25d4673fab76cc420aba868dff16b';
 const POS_MAP = { 'Wts': 'Whatsapp', 'IG': 'IG', 'FB': 'FB', 'Line': 'Line', 'TW': 'Taiwan' };
 
-let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', currentArrival = '未到貨', pendingUpdates = new Map(), editingRows = new Set(); 
+let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', currentArrival = '未到貨', pendingUpdates = new Map(), editingRows = new Set();
 let urlPreviewCache = new Map();
+try {
+  const savedCache = localStorage.getItem('img_cache');
+  if (savedCache) {
+    // 將 Array 轉回 Map
+    urlPreviewCache = new Map(JSON.parse(savedCache));
+  }
+} catch (e) { 
+  console.warn("快取讀取失敗，重新初始化"); 
+  urlPreviewCache = new Map();
+}
 
 function setFilter(type) {
   currentFilter = type;
@@ -140,18 +150,35 @@ function setFilter(type) {
   render();
 }
 
+// 修正後的日期抓取邏輯
 function updateLatestShipDate() {
   const dateTextEl = document.getElementById('latestShipDateText');
+  
+  // 1. 先從 allItems 提取所有 shipDate
   const allDates = allItems
     .map(i => i.shipDate)
     .filter(d => d && d.trim() !== "" && d !== "未填");
 
   if (allDates.length === 0) {
-    dateTextEl.textContent = "暫無記錄";
+    // 2. 如果 items 裡沒日期，顯示預設提示（或可以顯示一個預期日期）
+    dateTextEl.textContent = "待入庫後自動計算"; 
     return;
   }
-  allDates.sort((a, b) => new Date(b) - new Date(a));
-  dateTextEl.textContent = allDates[0];
+
+  // 3. 排序找出最新的日期
+  allDates.sort((a, b) => {
+    // 處理 YYYY/MM/DD 或 YYYY-MM-DD 格式
+    return new Date(b.replace(/\//g, '-')) - new Date(a.replace(/\//g, '-'));
+  });
+
+  const latestDate = new Date(allDates[0].replace(/\//g, '-'));
+  
+  // 4. 根據你要求「取最後一個日期+1」或是直接顯示該團日期
+  // 這裡顯示最新的一團日期
+  dateTextEl.textContent = allDates[0]; 
+  
+  // 如果你想強調這是「最新一團」，可以加點顏色
+  dateTextEl.style.color = "#1e3a8a";
 }
   
 function doLogin() {
@@ -165,27 +192,34 @@ function doLogin() {
   .then(d => {
     if(d.error) throw new Error(d.error);
     allItems = d.items || [];
-    updateLatestShipDate();
+    
+    // --- 日期更新邏輯 ---
+    if (d.latestShipDate) {
+      document.getElementById('latestShipDateText').textContent = d.latestShipDate;
+    } else {
+      updateLatestShipDate(); 
+    }
 
-    // 更新商店選單
+    // --- 選單更新 (商店) ---
     const shopSelect = document.getElementById('addShop');
     let shops = [...new Set(allItems.map(i => (i.shop || i.store || '').trim()))].filter(s => s !== "");
     shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
       (shops.length ? shops.sort().map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('') : ["Mercari", "Amazon", "Rakuten"].map(s => `<option value="${s}">${s}</option>`).join(''));
 
-    // 更新 Position 選單
+    // --- 選單更新 (Position) ---
     const posSelect = document.getElementById('addPos');
     let positions = [...new Set(allItems.map(i => (i.position || i.pos || '').trim()))].filter(p => p !== "");
     posSelect.innerHTML = '<option value="">選擇來源...</option>' + 
       (positions.length ? positions.sort().map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('') : Object.values(POS_MAP).map(p => `<option value="${p}">${p}</option>`).join(''));
 
-    // 抓取客戶 ID
+    // --- 抓取客戶 ID ---
     fetch(API, {method:'POST', body: new URLSearchParams({action:'getCustomerIds', password})})
     .then(r=>r.json()).then(res => {
       allCustomerIds = res.ids || [];
       document.getElementById('idList').innerHTML = allCustomerIds.map(id => `<option value="${esc(id)}">`).join('');
     });
 
+    // --- 切換介面 ---
     document.getElementById('login').style.display = 'none';
     document.getElementById('adminNav').style.display = 'grid';
     document.getElementById('mainPanel').style.display = 'block';
@@ -194,6 +228,7 @@ function doLogin() {
     document.getElementById('arrivalDateInput').value = today;
     document.getElementById('addDate').value = today;
 
+    // --- 這裡執行一次就夠了 ---
     setFilter('todo'); 
     buildArrivalTabs();
   })
@@ -327,24 +362,56 @@ async function submitEvaluationComplete(row) {
 }
 
 async function fetchPreview(url, row) {
+  if (urlPreviewCache.has(url)) {
+    updateImgWrap(row, urlPreviewCache.get(url));
+    return;
+  }
+
   const mId = url.match(/item\/(m\d+)/);
   if (mId && mId[1]) {
     const mercariImg = `https://static.mercdn.net/item/detail/orig/photos/${mId[1]}_1.jpg`;
-    urlPreviewCache.set(url, mercariImg);
+    // 先存再更新，確保邏輯連貫
+    saveToCache(url, mercariImg);
     updateImgWrap(row, mercariImg);
     return;
   }
+
+  // 如果已經是 Mercari 就不會執行到這裡
   setTimeout(async () => {
     try {
       if (!url.startsWith('http')) return;
       const res = await fetch(`https://api.linkpreview.net/?key=${LINK_PREVIEW_KEY}&q=${encodeURIComponent(url)}`);
       const data = await res.json();
       if (data && data.image) {
-        urlPreviewCache.set(url, data.image);
+        saveToCache(url, data.image);
         updateImgWrap(row, data.image);
+      } else {
+        throw new Error('No image');
       }
-    } catch (e) { }
+    } catch (e) { 
+      const loader = document.getElementById(`img-load-${row}`);
+      if(loader) loader.textContent = '無預覽';
+    }
   }, Math.random() * 2000); 
+}
+
+function saveToCache(url, imgData) {
+  try {
+    urlPreviewCache.set(url, imgData);
+    const cacheArray = Array.from(urlPreviewCache.entries());
+    
+    // 如果快取超過 400 筆，刪除舊的，避免 LocalStorage 爆掉
+    if (cacheArray.length > 400) {
+      const slimCache = cacheArray.slice(-400);
+      localStorage.setItem('img_cache', JSON.stringify(slimCache));
+    } else {
+      localStorage.setItem('img_cache', JSON.stringify(cacheArray));
+    }
+  } catch(e) { 
+    console.warn("LocalStorage 空間不足，清除舊快取");
+    localStorage.removeItem('img_cache'); // 如果真的爆了，清空重來
+    urlPreviewCache.clear();
+  }
 }
 
 function updateImgWrap(row, imgSrc) {
