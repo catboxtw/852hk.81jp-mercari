@@ -142,8 +142,8 @@ let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
 // 新增：抓取寄出日期並顯示
 function fetchShipmentNotice() {
   const noticeEl = document.getElementById('shipmentNotice');
-  
-  // 只有在「未完成」分頁且「未到貨」標籤下才顯示
+  if (!noticeEl) return;
+
   if (currentFilter === 'todo' && currentArrival === '未到貨') {
     noticeEl.style.display = 'block';
   } else {
@@ -151,16 +151,24 @@ function fetchShipmentNotice() {
     return;
   }
 
-  fetch(`${API}?action=getShipmentNotice`)
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        noticeEl.textContent = `📢 ${d.text}`;
-      } else {
+  // 加上 try catch 確保即使這行壞了，下方的 render 也能繼續跑
+  try {
+    fetch(`${API}?action=getShipmentNotice`)
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.success) {
+          noticeEl.innerHTML = `📢 ${d.text}`;
+        } else {
+          noticeEl.style.display = 'none';
+        }
+      })
+      .catch(e => {
+        console.log("寄出日期獲取失敗", e);
         noticeEl.style.display = 'none';
-      }
-    })
-    .catch(() => noticeEl.style.display = 'none');
+      });
+  } catch (err) {
+    noticeEl.style.display = 'none';
+  }
 }
 
 // 修改原有的 setFilter，讓它切換時也觸發提示更新
