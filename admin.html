@@ -136,6 +136,15 @@ try {
   urlPreviewCache = new Map();
 }
 
+  window.onload = function() {
+  const savedPw = localStorage.getItem('adminPassword');
+  if (savedPw === '4916') {
+    // 這裡調用你原本 admin.html 裡進入主界面的函數
+    // 假設你的登入函數叫 doLogin(pw)
+    doLogin(savedPw); 
+  }
+};
+
 function setFilter(type) {
   currentFilter = type;
   document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -190,6 +199,8 @@ function doLogin() {
   .then(d => {
     if(d.error) throw new Error(d.error);
     allItems = d.items || [];
+    // 在 doLogin 成功獲取資料後加入
+localStorage.setItem('adminPassword', password);
     
     // --- 日期更新邏輯 ---
     if (d.latestShipDate) {
