@@ -483,8 +483,17 @@ async function saveBatchData() {
   if (pendingUpdates.size === 0) return;
   if (!confirm("確定儲存全部修改？")) return;
 
+  // 定義按鈕變數，用於 UI 反饋
+  const btn = document.querySelector('#batchBar button[onclick="saveBatchData()"]');
+  const floatBtn = document.getElementById('floatingSave');
+  const originalBtnText = btn ? btn.textContent : '💾 儲存全部';
+
+  if (btn) { btn.disabled = true; btn.textContent = '儲存中...'; }
+  if (floatBtn) floatBtn.disabled = true;
+
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
   
+  // 建立所有非同步任務
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const params = { action: 'saveArrivalData', password: password, row: row };
     const hasWeight = data.weight !== undefined && data.weight.toString().trim() !== "";
@@ -492,12 +501,14 @@ async function saveBatchData() {
     if (data.position !== undefined) params.position = data.position;
     if (data.custId !== undefined) params.custId = data.custId;
     if (data.weight !== undefined) params.weight = data.weight;
+    if (data.image !== undefined) params.image = data.image;
+    if (data.track !== undefined) params.track = data.track;
     
-    // 關鍵修改：如果有填重量，自動填入到貨日期、寄出日期與未評價狀態
+    // 如果有填寫重量，視為到貨，自動補齊日期與狀態
     if (hasWeight) {
-      params.arrivalDate = dateVal;  // 原有的到貨日期
-      params.shipDate = dateVal;     // 新增：將相同日期寫入寄出日期欄位
-      params.status = '未評價'; 
+      params.arrivalDate = dateVal;  // 寫入到貨日期
+      params.shipDate = dateVal;     // 同步寫入寄出日期
+      params.status = '未評價';       // 標記為未評價
     }
     
     const body = new URLSearchParams();
@@ -506,8 +517,13 @@ async function saveBatchData() {
   });
 
   try {
-    await Promise.all(tasks);
-    // 儲存成功後，模擬重新登入以刷新最新資料
+    const results = await Promise.all(tasks);
+    
+    // 檢查是否有 API 傳回錯誤
+    const firstError = results.find(r => r.error);
+    if (firstError) throw new Error(firstError.error);
+
+    // 儲存成功後，重新抓取最新資料以同步畫面
     const refreshRes = await fetch(API, {
       method: 'POST', 
       body: new URLSearchParams({action:'getAdminItems', password})
@@ -520,13 +536,15 @@ async function saveBatchData() {
       editingRows.clear();
       render(); 
       updateUIStates();
-      alert('儲存成功！已標記為「未評價」。');
+      alert('儲存成功！資料已同步。');
     }
   } catch (err) { 
-    alert('儲存失敗：' + err); 
+    console.error(err);
+    alert('儲存失敗：' + err.message); 
   } finally {
-    btn.disabled = false; 
-    btn.textContent = originalBtnText;
+    // 恢復按鈕狀態
+    if (btn) { btn.disabled = false; btn.textContent = originalBtnText; }
+    if (floatBtn) floatBtn.disabled = false;
   }
 }
 
