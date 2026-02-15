@@ -3,65 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📦 執貨清單</title>
+<title>管理系統 - 📦 執貨清單</title>
 <style>
-  :root { --primary: #2563eb; --hk-color: #1e40af; --tw-color: #7c3aed; }
-  body { font-family: -apple-system, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+  :root { --primary: #2563eb; --hk-color: #1e40af; --tw-color: #7c3aed; --bg: #f8fafc; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
   
-  /* 導覽列 */
-  .admin-nav { display: flex; justify-content: space-around; background: #fff; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
-  .nav-btn { background: none; border: none; font-size: 12px; cursor: pointer; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .nav-btn span { font-size: 18px; }
+  /* 導覽列樣式 (與 Admin Page 一致) */
+  .admin-nav { background: #fff; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1000; }
+  .nav-content { display: flex; justify-content: space-around; max-width: 600px; margin: 0 auto; padding: 10px 5px; }
+  .nav-btn { background: none; border: none; font-size: 11px; color: #64748b; cursor: pointer; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .nav-btn span { font-size: 20px; }
   .nav-btn.active { color: var(--primary); font-weight: bold; }
 
-  /* 登入區 */
-  #loginPanel { padding: 50px 20px; text-align: center; }
-  .login-input { padding: 12px; width: 200px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; }
-  .login-btn { padding: 12px 30px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: bold; }
+  /* 登入面板 (若未登入才顯示) */
+  #loginPanel { padding: 100px 20px; text-align: center; }
+  .login-input { padding: 12px; width: 220px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; margin-bottom: 12px; }
+  .login-btn { padding: 12px 40px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-  /* 主面板 */
-  #mainPanel { padding: 15px; display: none; }
+  /* 主面板內容 */
+  #mainPanel { max-width: 600px; margin: 0 auto; padding: 15px; display: none; }
   
-  /* 團號分頁 (Tabs) */
-  #groupTabs { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; white-space: nowrap; }
-  .tab-btn { padding: 8px 16px; background: #e2e8f0; border: none; border-radius: 20px; font-size: 14px; cursor: pointer; }
-  .tab-btn.active { background: var(--primary); color: #fff; }
+  /* 團號選擇 Tabs */
+  #groupTabs { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding: 5px 0; scrollbar-width: none; }
+  #groupTabs::-webkit-scrollbar { display: none; }
+  .tab-btn { padding: 8px 18px; background: #e2e8f0; color: #475569; border: none; border-radius: 20px; font-size: 14px; cursor: pointer; white-space: nowrap; transition: 0.2s; }
+  .tab-btn.active { background: var(--primary); color: #fff; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.3); }
 
-  /* 大紅框 */
-  .region-section { background: #fff; border-radius: 15px; padding: 15px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 5px solid; }
+  /* 區域大標題 */
+  .region-section { background: #fff; border-radius: 16px; padding: 15px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-top: 6px solid; }
   .hk-section { border-top-color: var(--hk-color); }
   .tw-section { border-top-color: var(--tw-color); }
-  .region-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-  .total-weight { font-size: 13px; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; }
+  .region-title { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .total-weight { font-size: 12px; background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 30px; font-weight: bold; }
 
-  .cust-card { display: flex; border: 2.5px solid #ef4444; border-radius: 12px; margin-bottom: 20px; background: #fff; overflow: hidden; }
-  .min-code-side { background: #ef4444; color: #fff; font-size: 32px; font-weight: 900; width: 60px; display: flex; align-items: center; justify-content: center; align-self: stretch; }
-  .cust-info-side { flex: 1; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-  .cust-name { font-weight: bold; font-size: 18px; color: #1e293b; margin-bottom: 12px; }
+  /* 大紅框: 客人分組卡片 */
+  .cust-card { display: flex; border: 2.5px solid #ef4444; border-radius: 12px; margin-bottom: 20px; background: #fff; overflow: hidden; min-height: 100px; }
+  .min-code-side { background: #ef4444; color: #fff; font-size: 32px; font-weight: 900; width: 65px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .cust-info-side { flex: 1; padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .cust-name { font-weight: bold; font-size: 17px; color: #1e293b; margin-bottom: 12px; }
   
-  /* 商品顯示容器 */
-  .code-container { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-  .item-box { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1.5px solid #f59e0b; background: #fffbeb; padding: 5px; border-radius: 8px; }
-  .code-num { font-weight: bold; font-size: 16px; color: #92400e; }
-  .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: #eee; }
+  /* 細黃框容器 */
+  .code-container { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .item-box { display: flex; flex-direction: column; align-items: center; gap: 5px; border: 1.5px solid #f59e0b; background: #fffbeb; padding: 6px; border-radius: 10px; min-width: 60px; }
+  .code-num { font-weight: 800; font-size: 15px; color: #92400e; }
+  .thumb { width: 55px; height: 55px; object-fit: cover; border-radius: 6px; background: #f1f5f9; border: 1px solid #fde68a; }
 
-  .loading { text-align: center; padding: 50px; color: #64748b; }
+  .loading { text-align: center; padding: 50px; color: #94a3b8; font-weight: 500; }
 </style>
 </head>
 <body>
 
 <div class="admin-nav" id="adminNav" style="display:none">
-  <button class="nav-btn" onclick="location.href='index.html'"><span>🔍</span>查詢 ID</button>
-  <button class="nav-btn" onclick="location.href='admin.html'"><span>⚖️</span>到貨磅重</button>
-  <button class="nav-btn active" onclick="location.href='pick-list.html'"><span>📦</span>執貨</button>
-  <button class="nav-btn" onclick="alert('開發中')"><span>📢</span>通知客人</button>
+  <div class="nav-content">
+    <button class="nav-btn" onclick="location.href='index.html'"><span>🔍</span>查詢 ID</button>
+    <button class="nav-btn" onclick="location.href='admin.html'"><span>⚖️</span>到貨磅重</button>
+    <button class="nav-btn active" onclick="location.href='pick-list.html'"><span>📦</span>執貨</button>
+    <button class="nav-btn" onclick="alert('開發中')"><span>📢</span>通知客人</button>
+  </div>
 </div>
 
 <div id="loginPanel">
-  <h2>📦 執貨系統登入</h2>
-  <input type="password" id="pw" class="login-input" placeholder="請輸入管理員密碼">
+  <h2>📦 執貨管理登入</h2>
+  <input type="password" id="pw" class="login-input" placeholder="輸入密碼">
   <br>
-  <button class="login-btn" onclick="doLogin()">登入</button>
+  <button class="login-btn" onclick="manualLogin()">登入系統</button>
 </div>
 
 <div id="mainPanel">
@@ -74,49 +79,61 @@ const API = 'https://script.google.com/macros/s/AKfycby2I6Q2M67npEFW-Vqi14JS3L7r
 let GLOBAL_DATA = null;
 let CURRENT_GROUP = "";
 
-function doLogin() {
+// 🚀 關鍵邏輯：檢查登入狀態
+window.onload = function() {
+  const savedPw = localStorage.getItem('adminPassword');
+  if (savedPw === '4916') {
+    showMain(savedPw);
+  }
+};
+
+function manualLogin() {
   const pw = document.getElementById('pw').value;
   if (pw === '4916') {
-    document.getElementById('loginPanel').style.display = 'none';
-    document.getElementById('mainPanel').style.display = 'block';
-    document.getElementById('adminNav').style.display = 'flex';
-    loadData();
+    localStorage.setItem('adminPassword', pw);
+    showMain(pw);
   } else {
-    alert('密碼錯誤');
+    alert('密碼不正確');
   }
 }
 
-function loadData() {
+function showMain(pw) {
+  document.getElementById('loginPanel').style.display = 'none';
+  document.getElementById('adminNav').style.display = 'block';
+  document.getElementById('mainPanel').style.display = 'block';
+  loadData(pw);
+}
+
+async function loadData(pw) {
   const content = document.getElementById('mainContent');
-  content.innerHTML = '<div class="loading">正在讀取大數據中...請稍候...</div>';
+  content.innerHTML = '<div class="loading">📦 正在同步訂單資料...</div>';
   
-  fetch(API, {
-    method: 'POST',
-    body: new URLSearchParams({ action: 'getPickListData', password: '4916' })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (!data || !data.allGroups || Object.keys(data.allGroups).length === 0) {
-      content.innerHTML = '<div class="loading">❌ 目前沒有已入庫的執貨資料</div>';
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      body: new URLSearchParams({ action: 'getPickListData', password: pw })
+    });
+    const data = await res.json();
+    
+    if (!data.allGroups || Object.keys(data.allGroups).length === 0) {
+      content.innerHTML = '<div class="loading">目前沒有需要執貨的訂單。</div>';
       return;
     }
-    
+
     GLOBAL_DATA = data.allGroups;
-    // 優先使用 GAS 算出的最新團號，如果找不到，就取資料庫裡最後一個
+    // 找出最新團號
     CURRENT_GROUP = GLOBAL_DATA[data.latestGroup] ? data.latestGroup : Object.keys(GLOBAL_DATA).sort().reverse()[0];
     
     renderTabs();
     renderGroup(CURRENT_GROUP);
-  })
-  .catch(err => {
-    console.error(err);
-    content.innerHTML = '<div class="loading">❌ 連線失敗</div>';
-  });
+  } catch (e) {
+    content.innerHTML = '<div class="loading">❌ 連線失敗，請重新整理。</div>';
+  }
 }
 
 function renderTabs() {
   const tabs = document.getElementById('groupTabs');
-  const groupNames = Object.keys(GLOBAL_DATA).reverse(); // 最新團在前
+  const groupNames = Object.keys(GLOBAL_DATA).reverse(); 
   tabs.innerHTML = groupNames.map(name => 
     `<button class="tab-btn ${name === CURRENT_GROUP ? 'active' : ''}" onclick="switchGroup('${name}')">${name}</button>`
   ).join('');
@@ -131,12 +148,8 @@ function switchGroup(name) {
 function renderGroup(groupName) {
   const container = document.getElementById('mainContent');
   const groups = GLOBAL_DATA[groupName];
-  if (!groups) {
-    container.innerHTML = `<div class="loading">此團無資料</div>`;
-    return;
-  }
-
   container.innerHTML = '';
+
   ['HK', 'TW'].forEach(regionKey => {
     const info = groups[regionKey];
     if (Object.keys(info.customers).length === 0) return;
@@ -148,7 +161,6 @@ function renderGroup(groupName) {
 
     const sortedCustIds = Object.keys(info.customers).sort();
     sortedCustIds.forEach(custId => {
-      // 排序商品並取最小號
       const items = info.customers[custId].sort((a, b) => Number(a.code) - Number(b.code));
       const minCode = items.length > 0 ? items[0].code : '-';
 
@@ -160,7 +172,7 @@ function renderGroup(groupName) {
             <div class="code-container">
               ${items.map(item => `
                 <div class="item-box">
-                  ${item.img ? `<img src="${item.img}" class="thumb" loading="lazy">` : `<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#ccc">無圖</div>`}
+                  ${item.img ? `<img src="${item.img}" class="thumb" loading="lazy">` : `<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#cbd5e1">無圖</div>`}
                   <div class="code-num">#${item.code}</div>
                 </div>
               `).join('')}
