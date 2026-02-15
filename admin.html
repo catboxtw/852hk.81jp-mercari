@@ -120,8 +120,9 @@ input[type="date"].modal-input {
       <button id="submitAddBtn" onclick="submitNewItem()" style="flex:1; padding:12px; background:var(--primary-color); color:#fff; border:none; border-radius:8px; font-weight:bold;">確定加入</button>
     </div>
   </div>
+<div id="shipmentNotice" style="display:none; background:#e0f2fe; color:#0369a1; padding:12px; border-radius:10px; margin-bottom:15px; font-weight:bold; font-size:14px; border-left:5px solid #0ea5e9; text-align:center;">
+  ⏳ 正在讀取寄出日期...
 </div>
-
 <div id="list"></div>
 <button class="add-item-btn" onclick="openAddModal()">➕ 加入新商品到主表</button>
 </div></main>
@@ -138,17 +139,39 @@ const POS_MAP = { 'Wts': 'Whatsapp', 'IG': 'IG', 'FB': 'FB', 'Line': 'Line', 'TW
 let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', currentArrival = '未到貨', pendingUpdates = new Map(), editingRows = new Set(); 
 let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
 
+// 新增：抓取寄出日期並顯示
+function fetchShipmentNotice() {
+  const noticeEl = document.getElementById('shipmentNotice');
+  
+  // 只有在「未完成」分頁且「未到貨」標籤下才顯示
+  if (currentFilter === 'todo' && currentArrival === '未到貨') {
+    noticeEl.style.display = 'block';
+  } else {
+    noticeEl.style.display = 'none';
+    return;
+  }
+
+  fetch(`${API}?action=getShipmentNotice`)
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        noticeEl.textContent = `📢 ${d.text}`;
+      } else {
+        noticeEl.style.display = 'none';
+      }
+    })
+    .catch(() => noticeEl.style.display = 'none');
+}
+
+// 修改原有的 setFilter，讓它切換時也觸發提示更新
 function setFilter(type) {
   currentFilter = type;
-  
-  // 移除所有按鈕的 active 樣式
   document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  
-  // 根據 ID 幫點擊的按鈕加上 active
   const activeBtn = document.getElementById('f-' + type);
   if (activeBtn) activeBtn.classList.add('active');
-
-  render(); // 重新渲染列表
+  
+  fetchShipmentNotice(); // <--- 新增這行
+  render();
 }
 
 function doLogin() {
@@ -589,7 +612,7 @@ function buildArrivalTabs(){
     const t = document.createElement('div');
     t.style.cssText = `padding:8px 15px; border-radius:20px; background:${currentArrival===name?'#2563eb':'#fff'}; color:${currentArrival===name?'#fff':'#475569'}; border:1px solid #ddd; cursor:pointer; font-size:13px; font-weight:bold; white-space:nowrap;`;
     t.textContent = name;
-    t.onclick = () => { currentArrival = name; render(); buildArrivalTabs(); };
+    t.onclick = () => { currentArrival = name; render(); buildArrivalTabs(); fetchShipmentNotice();};
     tabs.appendChild(t);
   });
 }
