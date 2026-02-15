@@ -35,28 +35,10 @@
   .photo-btn { padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
   #batchBar { display: none; background: #fff4e5; border: 1px solid #ffe0b2; padding: 15px; border-radius: 12px; margin-bottom: 15px; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   #floatingSave { display: none; position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: var(--warn-color); color: white; border: none; font-size: 30px; z-index: 101; box-shadow: 0 4px 15px rgba(0,0,0,0.3); align-items: center; justify-content: center; }
-  
-  .url-text { font-size: 10px; color: #3b82f6; word-break: break-all; margin-bottom: 2px; text-decoration: underline; cursor: pointer; display: block; }
   .green-tag { background: var(--success-color); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 5px; cursor: pointer; }
-/* 彈出視窗基礎樣式 */
   .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center; }
   .modal-content { background:#fff; width:92%; max-width:400px; padding:20px; border-radius:16px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-  .modal-input { 
-  padding: 10px 12px; /* 稍微縮減上下 padding */
-  border: 1px solid #ddd; 
-  border-radius: 8px; 
-  font-size: 14px; 
-  width: 100%; 
-  outline: none; 
-  height: 45px; /* 強制所有輸入框高度統一 */
-  display: block;
-  -webkit-appearance: none; /* 移除 iOS 預設樣式 */
-}
-
-/* 針對日期框內部的特殊調整 */
-input[type="date"].modal-input {
-  line-height: 1.5;
-}
+  .modal-input { padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: 100%; outline: none; height: 45px; display: block; -webkit-appearance: none; }
   .modal-input:focus { border-color: var(--primary-color); }
   .add-item-btn { width:100%; padding:15px; background:#fff; border:2px dashed #cbd5e1; border-radius:12px; color:#64748b; font-weight:bold; margin-top:20px; cursor:pointer; }
 </style>
@@ -94,26 +76,37 @@ input[type="date"].modal-input {
   </div>
 
   <div id="mainPanel" style="display:none">
-<div class="filter-bar">
-  <button class="filter-btn active" id="f-todo" onclick="setFilter('todo')">未完成</button>
-  <button class="filter-btn" id="f-unrated" onclick="setFilter('unrated')">未評價</button>
-  <button class="filter-btn" id="f-done" onclick="setFilter('done')">已完成</button>
-  <button class="filter-btn" id="f-all" onclick="setFilter('all')">全部</button>
-</div>
+    <div class="filter-bar">
+      <button class="filter-btn active" id="f-todo" onclick="setFilter('todo')">未完成</button>
+      <button class="filter-btn" id="f-unrated" onclick="setFilter('unrated')">未評價</button>
+      <button class="filter-btn" id="f-done" onclick="setFilter('done')">已完成</button>
+      <button class="filter-btn" id="f-all" onclick="setFilter('all')">全部</button>
+    </div>
+
+    <div id="latestShipDateBox" style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 20px;">🚚</span>
+      <div>
+        <div style="font-size: 11px; color: #1e40af; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">最新一團寄出日期</div>
+        <div id="latestShipDateText" style="font-size: 16px; font-weight: bold; color: #1e3a8a;">讀取中...</div>
+      </div>
+    </div>
+
     <div id="arrivalTabs" style="display:flex; gap:8px; margin-bottom:15px; overflow-x:auto; padding-bottom:5px;"></div>
-    <div id="addModal" class="modal">
+    
+    <div id="list"></div>
+    <button class="add-item-btn" onclick="openAddModal()">➕ 加入新商品到主表</button>
+  </div>
+</main>
+
+<div id="addModal" class="modal">
   <div class="modal-content">
-    <h3 style="margin:0; text-align:center;">➕ 加入新商品到主表</h3>
+    <h3 style="margin:0; text-align:center;">➕ 加入新商品</h3>
     <input type="date" id="addDate" class="modal-input">
-<select id="addShop" class="modal-input">
-  <option value="">選擇商店...</option>
-</select>
+    <select id="addShop" class="modal-input"><option value="">選擇商店...</option></select>
     <input type="text" id="addLink" placeholder="商品網址" class="modal-input">
     <input type="text" id="addItem" placeholder="商品名稱" class="modal-input">
     <input type="number" id="addJpy" placeholder="價錢 (JPY)" class="modal-input">
-    <select id="addPos" class="modal-input">
-  <option value="">選擇來源 (Position)...</option>
-</select>
+    <select id="addPos" class="modal-input"><option value="">選擇來源...</option></select>
     <input type="text" id="addCustId" placeholder="Customer ID" list="idList" class="modal-input">
     <div style="display:flex; gap:10px; margin-top:10px;">
       <button onclick="closeAddModal()" style="flex:1; padding:12px; background:#f1f5f9; border:none; border-radius:8px; font-weight:bold;">取消</button>
@@ -122,9 +115,6 @@ input[type="date"].modal-input {
   </div>
 </div>
 
-<div id="list"></div>
-<button class="add-item-btn" onclick="openAddModal()">➕ 加入新商品到主表</button>
-</div></main>
 <button id="floatingSave" onclick="saveBatchData()">💾</button>
 
 <script>
@@ -136,26 +126,38 @@ const LINK_PREVIEW_KEY = '03b25d4673fab76cc420aba868dff16b';
 const POS_MAP = { 'Wts': 'Whatsapp', 'IG': 'IG', 'FB': 'FB', 'Line': 'Line', 'TW': 'Taiwan' };
 
 let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', currentArrival = '未到貨', pendingUpdates = new Map(), editingRows = new Set(); 
-let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
+let urlPreviewCache = new Map();
 
 function setFilter(type) {
   currentFilter = type;
-  
-  // 移除所有按鈕的 active 樣式
   document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  
-  // 根據 ID 幫點擊的按鈕加上 active
   const activeBtn = document.getElementById('f-' + type);
   if (activeBtn) activeBtn.classList.add('active');
-
-  render(); // 重新渲染列表
+  
+  // 如果不是「未完成」頁面，隱藏最新日期提示框，保持簡潔
+  document.getElementById('latestShipDateBox').style.display = (type === 'todo' || type === 'all') ? 'flex' : 'none';
+  
+  render();
 }
 
+function updateLatestShipDate() {
+  const dateTextEl = document.getElementById('latestShipDateText');
+  const allDates = allItems
+    .map(i => i.shipDate)
+    .filter(d => d && d.trim() !== "" && d !== "未填");
+
+  if (allDates.length === 0) {
+    dateTextEl.textContent = "暫無記錄";
+    return;
+  }
+  allDates.sort((a, b) => new Date(b) - new Date(a));
+  dateTextEl.textContent = allDates[0];
+}
+  
 function doLogin() {
   const pwInput = document.getElementById('pw');
   password = pwInput.value.trim();
   if(!password) return;
-  
   document.getElementById('loginStatus').textContent = '驗證中...';
 
   fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})})
@@ -163,47 +165,27 @@ function doLogin() {
   .then(d => {
     if(d.error) throw new Error(d.error);
     allItems = d.items || [];
+    updateLatestShipDate();
 
-    // --- 【修正版】動態更新下拉選單 ---
-    
-    // 1. 更新商店選單
+    // 更新商店選單
     const shopSelect = document.getElementById('addShop');
-    // 這裡同時檢查 .shop 和 .store，防止 GAS 欄位名稱對不上
     let shops = [...new Set(allItems.map(i => (i.shop || i.store || '').trim()))].filter(s => s !== "");
-    
-    if (shops.length > 0) {
-      shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
-        shops.sort().map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-    } else {
-      // 若完全沒資料才顯示預設
-      const defaultShops = ["Mercari", "Amazon", "Rakuten", "Yahoo"];
-      shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
-        defaultShops.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-    }
+    shopSelect.innerHTML = '<option value="">選擇商店...</option>' + 
+      (shops.length ? shops.sort().map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('') : ["Mercari", "Amazon", "Rakuten"].map(s => `<option value="${s}">${s}</option>`).join(''));
 
-    // 2. 更新 Position 選單
+    // 更新 Position 選單
     const posSelect = document.getElementById('addPos');
-    // 同樣從主表提取出現過的 Position
     let positions = [...new Set(allItems.map(i => (i.position || i.pos || '').trim()))].filter(p => p !== "");
-    
-    if (positions.length > 0) {
-      posSelect.innerHTML = '<option value="">選擇來源 (Position)...</option>' + 
-        positions.sort().map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
-    } else {
-      // 若無資料則使用 POS_MAP 的定義
-      posSelect.innerHTML = '<option value="">選擇來源...</option>' + 
-        Object.values(POS_MAP).map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
-    }
+    posSelect.innerHTML = '<option value="">選擇來源...</option>' + 
+      (positions.length ? positions.sort().map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('') : Object.values(POS_MAP).map(p => `<option value="${p}">${p}</option>`).join(''));
 
-    // --- 抓取客戶 ID ---
+    // 抓取客戶 ID
     fetch(API, {method:'POST', body: new URLSearchParams({action:'getCustomerIds', password})})
-    .then(r=>r.json())
-    .then(res => {
+    .then(r=>r.json()).then(res => {
       allCustomerIds = res.ids || [];
       document.getElementById('idList').innerHTML = allCustomerIds.map(id => `<option value="${esc(id)}">`).join('');
     });
 
-    // --- 切換介面 ---
     document.getElementById('login').style.display = 'none';
     document.getElementById('adminNav').style.display = 'grid';
     document.getElementById('mainPanel').style.display = 'block';
@@ -216,7 +198,6 @@ function doLogin() {
     buildArrivalTabs();
   })
   .catch(err => { 
-    console.error(err);
     document.getElementById('loginStatus').textContent = '密碼錯誤或連線失敗'; 
   });
 }
@@ -238,7 +219,7 @@ async function render() {
   if (currentFilter === 'unrated' && items.length > 0) {
     const batchBtn = document.createElement('button');
     batchBtn.innerHTML = `✅ 一鍵完成本頁所有評價 (${items.length} 項)`;
-    batchBtn.style.cssText = "width:100%; padding:15px; background:#059669; color:white; border:none; border-radius:12px; font-weight:bold; margin-bottom:15px; font-size:16px; box-shadow:0 4px 6px rgba(0,0,0,0.1);";
+    batchBtn.style.cssText = "width:100%; padding:15px; background:#059669; color:white; border:none; border-radius:12px; font-weight:bold; margin-bottom:15px;";
     batchBtn.onclick = () => submitAllEvaluations();
     listEl.appendChild(batchBtn);
   }
@@ -260,7 +241,6 @@ async function render() {
     }
 
     const shouldLock = (it.position || it.custId) && !editingRows.has(it.row) && !isPending;
-
     const card = document.createElement('div');
     card.className = `card-fixed ${isPending ? 'pending-card' : ''}`;
     
@@ -281,46 +261,26 @@ async function render() {
       `<div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; background: #f1f5f9; padding: 8px; border-radius: 8px;">
           <div style="font-size: 13px; font-weight: bold; color: #1e293b;">📍 ${esc(displayPos)}</div>
           <div style="font-size: 13px; color: #94a3b8; flex: 1;">ID: ${esc(displayId)}</div>
-          <button onclick="editingRows.add(${it.row}); render();" style="padding:4px 8px; font-size:11px; background:#fff; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;">✏️</button>
+          <button onclick="editingRows.add(${it.row}); render();" style="padding:4px 8px; font-size:11px; background:#fff; border:1px solid #cbd5e1; border-radius:4px;">✏️</button>
        </div>` :
       `<div class="pos-label">Position:</div>
-       <div class="pos-group">
-          ${Object.keys(POS_MAP).map(k => `<button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>`).join('')}
-       </div>
-       <div class="pos-label">Customer ID:</div>
-       <input type="text" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
+       <div class="pos-group">${Object.keys(POS_MAP).map(k => `<button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>`).join('')}</div>
+       <input type="text" list="idList" class="id-input" placeholder="Customer ID" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
 
-    // 這裡修正了標籤結構與字串拼接
     card.innerHTML = `
       <div class="card-left">
         <div class="code-tag">${esc(it.code || '無編號')}</div>
-        <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">📅 到貨日期: <span style="font-weight:bold;">${it.arrivalDate || '未填'}</span></div>
-        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">🚚 寄出日期: <span style="font-weight:bold; color:#2563eb;">${it.shipDate || '未填'}</span></div>
-
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 到貨日期: <span style="font-weight:bold;">${it.arrivalDate || '未填'}</span></div>
         ${posAndIdHtml}
-
         <div class="weight-row">
-          <input type="number" 
-                 id="w_inp_${it.row}" 
-                 inputmode="decimal" 
-                 step="0.001" 
-                 class="weight-input" 
-                 value="${displayWeight}" 
-                 oninput="updateField(${it.row}, 'weight', this.value, true)">
+          <input type="number" id="w_inp_${it.row}" inputmode="decimal" step="0.001" class="weight-input" value="${displayWeight}" oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
         </div>
-        
         <div style="margin-top: 8px;">
           ${displayTrack ? `<span class="green-tag" onclick="editPrompt(${it.row}, 'track', '${esc(displayTrack)}')">${esc(displayTrack)}</span>` : `<span style="font-size:11px; color:#94a3b8; cursor:pointer;" onclick="editPrompt(${it.row}, 'track', '')">+ 運單</span>`}
         </div>
-
-        ${isUnratedMode ? `
-          <button onclick="submitEvaluationComplete(${it.row})" style="width:100%; margin-top:10px; padding:12px; background:#059669; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
-            ✅ 已完成評價
-          </button>
-        ` : ''}
+        ${isUnratedMode ? `<button onclick="submitEvaluationComplete(${it.row})" style="width:100%; margin-top:10px; padding:12px; background:#059669; color:white; border:none; border-radius:8px; font-weight:bold;">✅ 已完成評價</button>` : ''}
       </div>
-
       <div class="card-right">
         <div class="card-img-wrap" id="img-wrap-${it.row}">${finalImgHtml}</div>
         <div style="display:flex; gap:4px; justify-content:center">
@@ -337,70 +297,36 @@ async function render() {
 
 async function submitAllEvaluations() {
   if(!confirm('確定要將此頁面所有商品標記為「已評價」嗎？')) return;
-  
   const btn = event.target;
   const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '大規模處理中...';
-
+  btn.disabled = true; btn.textContent = '大規模處理中...';
   try {
-    const res = await fetch(API, {
-      method: 'POST',
-      body: new URLSearchParams({
-        action: 'clearAllUnrated',
-        password: password
-      })
-    });
+    const res = await fetch(API, { method: 'POST', body: new URLSearchParams({ action: 'clearAllUnrated', password }) });
     const data = await res.json();
-    
     if (data.success) {
       alert(`成功處理！共清除 ${data.count || 0} 項標記。`);
-      // 更新本地資料：將所有標記為未評價的 status 清空
       allItems.forEach(it => { if(it.status === '未評價') it.status = ''; });
       render();
-    } else {
-      alert('失敗：' + data.error);
-    }
-  } catch (e) {
-    alert('系統連線失敗');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
-  }
+    } else { alert('失敗：' + data.error); }
+  } catch (e) { alert('系統連線失敗'); }
+  finally { btn.disabled = false; btn.textContent = originalText; }
 }
 
-// 單個完成 (也改用 fetch 避免卡住)
 async function submitEvaluationComplete(row) {
   const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = '處理中...';
-
+  btn.disabled = true; btn.textContent = '處理中...';
   try {
-    const res = await fetch(API, {
-      method: 'POST',
-      body: new URLSearchParams({
-        action: 'saveArrivalData', // 借用現有的儲存接口
-        password: password,
-        row: row,
-        status: '' // 將 AC 欄設為空
-      })
-    });
+    const res = await fetch(API, { method: 'POST', body: new URLSearchParams({ action: 'saveArrivalData', password, row, status: '' }) });
     const data = await res.json();
-    if(data.items || data.success) {
+    if(data.success || data.items) {
       const item = allItems.find(i => i.row === row);
       if(item) item.status = '';
       render();
     }
-  } catch(e) {
-    alert('失敗');
-    btn.disabled = false;
-    btn.textContent = '✅ 已完成評價';
-  }
+  } catch(e) { alert('失敗'); btn.disabled = false; btn.textContent = '✅ 已完成評價'; }
 }
 
-// 異步抓取網址預覽圖 (針對 Mercari 優化版)
 async function fetchPreview(url, row) {
-  // 1. 如果是 Mercari，直接構造圖片連結，完全不調用外部 API
   const mId = url.match(/item\/(m\d+)/);
   if (mId && mId[1]) {
     const mercariImg = `https://static.mercdn.net/item/detail/orig/photos/${mId[1]}_1.jpg`;
@@ -408,38 +334,22 @@ async function fetchPreview(url, row) {
     updateImgWrap(row, mercariImg);
     return;
   }
-
-  // 2. 如果不是 Mercari，加入 0.5~3 秒的隨機延遲，防止瞬間併發 2000 個請求
   setTimeout(async () => {
     try {
       if (!url.startsWith('http')) return;
-      await fetchFromAPI(url, row);
-    } catch (e) {
-      const loader = document.getElementById(`img-load-${row}`);
-      if (loader) loader.textContent = '暫無預覽';
-    }
-  }, Math.random() * 2500); 
+      const res = await fetch(`https://api.linkpreview.net/?key=${LINK_PREVIEW_KEY}&q=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      if (data && data.image) {
+        urlPreviewCache.set(url, data.image);
+        updateImgWrap(row, data.image);
+      }
+    } catch (e) { }
+  }, Math.random() * 2000); 
 }
 
-// 原有的 API 抓取邏輯作為後備
-async function fetchFromAPI(url, row) {
-  const res = await fetch(`https://api.linkpreview.net/?key=${LINK_PREVIEW_KEY}&q=${encodeURIComponent(url)}`);
-  const data = await res.json();
-  if (data && data.image && !data.image.includes('logo')) { // 排除包含 logo 字眼的圖
-    urlPreviewCache.set(url, data.image);
-    updateImgWrap(row, data.image);
-  } else {
-    const loader = document.getElementById(`img-load-${row}`);
-    if (loader) loader.textContent = '無法獲取首圖';
-  }
-}
-
-// 統一更新圖片外框的輔助函數
 function updateImgWrap(row, imgSrc) {
   const wrap = document.getElementById(`img-wrap-${row}`);
-  if (wrap) {
-    wrap.innerHTML = `<img src="${escAttr(imgSrc)}" class="card-img"><div class="preview-label">網址預覽</div>`;
-  }
+  if (wrap) wrap.innerHTML = `<img src="${escAttr(imgSrc)}" class="card-img"><div class="preview-label">網址預覽</div>`;
 }
 
 function editPrompt(row, field, oldVal) {
@@ -448,104 +358,51 @@ function editPrompt(row, field, oldVal) {
 }
 
 function updateField(row, field, value, isTyping = false) {
-  // 更新記憶體資料
   let data = pendingUpdates.get(row) || {};
   data[field] = value;
   pendingUpdates.set(row, data);
-  
-  // 標記該行為編輯狀態
   editingRows.add(row);
-
-  // 如果正在打字，不重新 render() 以免輸入框消失
   if (isTyping) {
-    updateUIStates(); // 顯示儲存按鈕
-    
-    // 手動幫這張卡片加上「編輯中」的 CSS 樣式，而不刷新整個頁面
-    const inputEl = event.target;
-    const cardEl = inputEl.closest('.card-fixed');
-    if (cardEl) {
-      cardEl.classList.add('editing-card');
-      cardEl.classList.add('pending-card');
-    }
-    
-    // 手動更新圖片下方的待儲存狀態文字
+    updateUIStates();
     const stEl = document.getElementById('st-' + row);
     if (stEl) stEl.textContent = '⏳ 待儲存';
-    
-  } else {
-    // 如果是點擊按鈕（如 Position），則可以直接 render
-    render();
-    updateUIStates();
-  }
+  } else { render(); updateUIStates(); }
 }
 
 async function saveBatchData() {
   if (pendingUpdates.size === 0) return;
   if (!confirm("確定儲存全部修改？")) return;
-
-  // 定義按鈕變數，用於 UI 反饋
   const btn = document.querySelector('#batchBar button[onclick="saveBatchData()"]');
   const floatBtn = document.getElementById('floatingSave');
   const originalBtnText = btn ? btn.textContent : '💾 儲存全部';
-
   if (btn) { btn.disabled = true; btn.textContent = '儲存中...'; }
   if (floatBtn) floatBtn.disabled = true;
-
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
   
-  // 建立所有非同步任務
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
-    const params = { action: 'saveArrivalData', password: password, row: row };
+    const params = { action: 'saveArrivalData', password, row };
     const hasWeight = data.weight !== undefined && data.weight.toString().trim() !== "";
-
     if (data.position !== undefined) params.position = data.position;
     if (data.custId !== undefined) params.custId = data.custId;
     if (data.weight !== undefined) params.weight = data.weight;
     if (data.image !== undefined) params.image = data.image;
     if (data.track !== undefined) params.track = data.track;
-    
-    // 如果有填寫重量，視為到貨，自動補齊日期與狀態
-    if (hasWeight) {
-      params.arrivalDate = dateVal;  // 寫入到貨日期
-      params.shipDate = dateVal;     // 同步寫入寄出日期
-      params.status = '未評價';       // 標記為未評價
-    }
-    
-    const body = new URLSearchParams();
-    for (let key in params) body.append(key, params[key]);
-    return fetch(API, {method:'POST', body}).then(r => r.json());
+    if (hasWeight) { params.arrivalDate = dateVal; params.shipDate = dateVal; params.status = '未評價'; }
+    return fetch(API, { method:'POST', body: new URLSearchParams(params) }).then(r => r.json());
   });
 
   try {
     const results = await Promise.all(tasks);
-    
-    // 檢查是否有 API 傳回錯誤
-    const firstError = results.find(r => r.error);
-    if (firstError) throw new Error(firstError.error);
-
-    // 儲存成功後，重新抓取最新資料以同步畫面
-    const refreshRes = await fetch(API, {
-      method: 'POST', 
-      body: new URLSearchParams({action:'getAdminItems', password})
-    });
+    const refreshRes = await fetch(API, { method: 'POST', body: new URLSearchParams({action:'getAdminItems', password}) });
     const refreshData = await refreshRes.json();
-    
     if(refreshData.items) {
       allItems = refreshData.items;
-      pendingUpdates.clear(); 
-      editingRows.clear();
-      render(); 
-      updateUIStates();
-      alert('儲存成功！資料已同步。');
+      pendingUpdates.clear(); editingRows.clear();
+      updateLatestShipDate(); render(); updateUIStates();
+      alert('儲存成功！');
     }
-  } catch (err) { 
-    console.error(err);
-    alert('儲存失敗：' + err.message); 
-  } finally {
-    // 恢復按鈕狀態
-    if (btn) { btn.disabled = false; btn.textContent = originalBtnText; }
-    if (floatBtn) floatBtn.disabled = false;
-  }
+  } catch (err) { alert('儲存失敗'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = originalBtnText; } if (floatBtn) floatBtn.disabled = false; }
 }
 
 function triggerUpload(row, mode) {
@@ -584,6 +441,7 @@ function buildArrivalTabs(){
 }
 
 function groupNum(str){ const m = String(str||'').match(/\d+/); return m ? parseInt(m[0],10) : -1; }
+
 async function compressAndUpload(file) {
   return new Promise((resolve, reject) => {
     const img = new Image(); const reader = new FileReader();
@@ -604,20 +462,13 @@ async function compressAndUpload(file) {
 }
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function escAttr(s){ return esc(s).replace(/\n/g,' '); }
-  function openAddModal() {
-  document.getElementById('addModal').style.display = 'flex';
-  document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
-}
-
-function closeAddModal() {
-  document.getElementById('addModal').style.display = 'none';
-}
+function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
 
 async function submitNewItem() {
   const btn = document.getElementById('submitAddBtn');
   const payload = {
-    action: 'addNewItem',
-    password: password,
+    action: 'addNewItem', password,
     date: document.getElementById('addDate').value.replace(/-/g, '/'),
     shop: document.getElementById('addShop').value,
     link: document.getElementById('addLink').value.trim(),
@@ -626,23 +477,13 @@ async function submitNewItem() {
     pos: document.getElementById('addPos').value.trim(),
     id: document.getElementById('addCustId').value.trim()
   };
-
-  if (!payload.item) return alert('請填寫商品名稱');
-if (!payload.shop) return alert('請選擇商店');
-if (!payload.pos) return alert('請選擇 Position');
+  if (!payload.item || !payload.shop || !payload.pos) return alert('請填寫完整資訊');
   btn.disabled = true; btn.textContent = '處理中...';
   try {
     const res = await fetch(API, { method: 'POST', body: new URLSearchParams(payload) });
     const data = await res.json();
-    if (data.success) {
-      alert('已成功加入主表！');
-      closeAddModal();
-      // 清空輸入框
-      ['addLink', 'addItem', 'addJpy', 'addPos', 'addCustId'].forEach(id => document.getElementById(id).value = '');
-      // 刷新列表
-      doLogin();
-    } else { alert('出錯：' + data.error); }
-  } catch (e) { alert('發送失敗'); }
+    if (data.success) { alert('成功！'); closeAddModal(); doLogin(); } else { alert('出錯'); }
+  } catch (e) { alert('失敗'); }
   finally { btn.disabled = false; btn.textContent = '確定加入'; }
 }
 </script>
