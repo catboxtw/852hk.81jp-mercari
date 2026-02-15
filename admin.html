@@ -256,27 +256,27 @@ function doLogin() {
 
 async function render() {
   const listEl = document.getElementById('list');
-  listEl.innerHTML = '';
+  listEl.innerHTML = '<div style="text-align:center; padding:20px;">渲染中...</div>'; // 加入 Loading 提示
 
   // 1. 分層過濾邏輯
   let items = allItems.filter(i => {
     if (currentFilter === 'unrated') return String(i.status).trim() === '未評價';
     if (currentFilter === 'done') return !!i.image && !i.status;
     if (currentFilter === 'todo') return !i.image;
-    return true;
+    return true; // 全部
   }).filter(i => {
-    if (currentFilter === 'all') return true;
+    // 關鍵修正：如果選了「全部」，就不受「團號」標籤影響
+    if (currentFilter === 'all') return true; 
+    
     const arr = String(i.arrival || '').trim();
     return (currentArrival === '未到貨') ? (!arr) : (arr === currentArrival);
   });
+
+  listEl.innerHTML = ''; // 清除 Loading
   
-  // 2. 一鍵完成按鈕
-  if (currentFilter === 'unrated' && items.length > 0) {
-    const batchBtn = document.createElement('button');
-    batchBtn.innerHTML = `✅ 一鍵完成本頁所有評價 (${items.length} 項)`;
-    batchBtn.style.cssText = "width:100%; padding:15px; background:#059669; color:white; border:none; border-radius:12px; font-weight:bold; margin-bottom:15px; font-size:16px; box-shadow:0 4px 6px rgba(0,0,0,0.1);";
-    batchBtn.onclick = () => submitAllEvaluations();
-    listEl.appendChild(batchBtn);
+  if (items.length === 0) {
+    listEl.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:40px;">（此分類下無資料）</div>';
+    return;
   }
   
   for (const it of items) {
@@ -339,9 +339,15 @@ async function render() {
         <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 現有日期: <span style="font-weight:bold;">${it.arrivalDate || '未到貨'}</span></div>
         ${posAndIdHtml}
         <div class="weight-row">
-          <input type="number" id="weight-${it.row}" name="weight-${it.row}" inputmode="decimal" step="0.001" class="weight-input" value="${displayWeight}" 
-                 placeholder="0.000" 
-                 oninput="updateField(${it.row}, 'weight', this.value, true)">
+          <input type="number" 
+       id="weight_input_${it.row}" 
+       name="weight_${it.row}" 
+       inputmode="decimal" 
+       step="0.001" 
+       class="weight-input" 
+       value="${displayWeight}" 
+       placeholder="0.000" 
+       oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
         </div>
         <div>
@@ -429,34 +435,32 @@ async function submitEvaluationComplete(row) {
   }
 }
 
-// 異步抓取網址預覽圖 (針對 Mercari 優化版)
 async function fetchPreview(url, row) {
+  const loader = document.getElementById(`img-load-${row}`);
+  
+  // 1. 如果不是 Mercari，暫時不自動抓取縮圖，節省 API 額度
+  if (!url.includes('mercari.com')) {
+    if (loader) loader.textContent = '點擊網址查看';
+    return;
+  }
+
   try {
-    // 如果是 Mercari 網址，我們嘗試先用常用的圖片格式來「猜」
-    // Mercari 商品 ID 通常是 m 開頭的一串數字
     const mId = url.match(/item\/(m\d+)/);
-    
-    // 方案 A: 如果能解析出 ID，直接構造 Mercari 的圖片 CDN 地址 (這是最穩定的)
     if (mId && mId[1]) {
       const mercariImg = `https://static.mercdn.net/item/detail/orig/photos/${mId[1]}_1.jpg`;
-      
-      // 驗證圖片是否有效
       const imgCheck = new Image();
       imgCheck.src = mercariImg;
       imgCheck.onload = () => {
         urlPreviewCache.set(url, mercariImg);
         updateImgWrap(row, mercariImg);
       };
-      imgCheck.onerror = () => fetchFromAPI(url, row); // 如果猜錯了，退回使用 API
+      imgCheck.onerror = () => { if (loader) loader.textContent = '無縮圖'; };
       return;
     }
-    
-    // 方案 B: 非 Mercari 或解析失敗，使用 API
-    await fetchFromAPI(url, row);
-    
+    // 如果是 Mercari 但解析不到 ID，才用 API (可選，或直接放棄以省錢)
+    // await fetchFromAPI(url, row); 
   } catch (e) {
-    const loader = document.getElementById(`img-load-${row}`);
-    if (loader) loader.textContent = '無預覽圖';
+    if (loader) loader.textContent = '載入失敗';
   }
 }
 
