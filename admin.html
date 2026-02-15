@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
@@ -120,9 +121,8 @@ input[type="date"].modal-input {
       <button id="submitAddBtn" onclick="submitNewItem()" style="flex:1; padding:12px; background:var(--primary-color); color:#fff; border:none; border-radius:8px; font-weight:bold;">確定加入</button>
     </div>
   </div>
-<div id="shipmentNotice" style="display:none; background:#e0f2fe; color:#0369a1; padding:12px; border-radius:10px; margin-bottom:15px; font-weight:bold; font-size:14px; border-left:5px solid #0ea5e9; text-align:center;">
-  ⏳ 正在讀取寄出日期...
 </div>
+
 <div id="list"></div>
 <button class="add-item-btn" onclick="openAddModal()">➕ 加入新商品到主表</button>
 </div></main>
@@ -139,43 +139,17 @@ const POS_MAP = { 'Wts': 'Whatsapp', 'IG': 'IG', 'FB': 'FB', 'Line': 'Line', 'TW
 let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', currentArrival = '未到貨', pendingUpdates = new Map(), editingRows = new Set(); 
 let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
 
-// 新增：抓取寄出日期並顯示
-async function fetchShipmentNotice() {
-  const noticeEl = document.getElementById('shipmentNotice');
-  if (!noticeEl) return;
-
-  if (currentFilter === 'todo' && currentArrival === '未到貨') {
-    noticeEl.style.display = 'block';
-  } else {
-    noticeEl.style.display = 'none';
-    return;
-  }
-
-  try {
-    const response = await fetch(`${API}?action=getShipmentNotice`);
-    if (!response.ok) throw new Error('Network error');
-    
-    const d = await response.json();
-    if (d && d.success) {
-      noticeEl.innerHTML = `📢 ${d.text}`;
-    } else {
-      noticeEl.style.display = 'none';
-    }
-  } catch (e) {
-    console.error("日期提示抓取失敗，但繼續執行後續邏輯:", e);
-    noticeEl.style.display = 'none';
-  }
-}
-
-// 修改原有的 setFilter，讓它切換時也觸發提示更新
 function setFilter(type) {
   currentFilter = type;
+  
+  // 移除所有按鈕的 active 樣式
   document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  
+  // 根據 ID 幫點擊的按鈕加上 active
   const activeBtn = document.getElementById('f-' + type);
   if (activeBtn) activeBtn.classList.add('active');
-  
-  fetchShipmentNotice(); // <--- 新增這行
-  render();
+
+  render(); // 重新渲染列表
 }
 
 function doLogin() {
@@ -188,13 +162,8 @@ function doLogin() {
   fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})})
   .then(r => r.json())
   .then(d => {
-    console.log("Debug - Data from GAS:", d);
     if(d.error) throw new Error(d.error);
-    // 確保 items 存在
-  allItems = d.items || [];
-  if (allItems.length === 0) {
-      console.warn("警告：GAS 回傳成功但資料庫是空的");
-  }
+    allItems = d.items || [];
 
     // --- 【修正版】動態更新下拉選單 ---
     
@@ -245,9 +214,8 @@ function doLogin() {
     document.getElementById('addDate').value = today;
 
     setFilter('todo'); 
-    buildArrivalTabs(); 
-  setFilter('all'); // 👈 登入後預設看「全部」，確保一定有東西看
-})
+    buildArrivalTabs();
+  })
   .catch(err => { 
     console.error(err);
     document.getElementById('loginStatus').textContent = '密碼錯誤或連線失敗'; 
@@ -256,27 +224,26 @@ function doLogin() {
 
 async function render() {
   const listEl = document.getElementById('list');
-  listEl.innerHTML = '<div style="text-align:center; padding:20px;">渲染中...</div>'; // 加入 Loading 提示
+  listEl.innerHTML = '';
 
   // 1. 分層過濾邏輯
   let items = allItems.filter(i => {
     if (currentFilter === 'unrated') return String(i.status).trim() === '未評價';
     if (currentFilter === 'done') return !!i.image && !i.status;
     if (currentFilter === 'todo') return !i.image;
-    return true; // 全部
+    return true;
   }).filter(i => {
-    // 關鍵修正：如果選了「全部」，就不受「團號」標籤影響
-    if (currentFilter === 'all') return true; 
-    
     const arr = String(i.arrival || '').trim();
     return (currentArrival === '未到貨') ? (!arr) : (arr === currentArrival);
   });
-
-  listEl.innerHTML = ''; // 清除 Loading
   
-  if (items.length === 0) {
-    listEl.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:40px;">（此分類下無資料）</div>';
-    return;
+  // 2. 一鍵完成按鈕
+  if (currentFilter === 'unrated' && items.length > 0) {
+    const batchBtn = document.createElement('button');
+    batchBtn.innerHTML = `✅ 一鍵完成本頁所有評價 (${items.length} 項)`;
+    batchBtn.style.cssText = "width:100%; padding:15px; background:#059669; color:white; border:none; border-radius:12px; font-weight:bold; margin-bottom:15px; font-size:16px; box-shadow:0 4px 6px rgba(0,0,0,0.1);";
+    batchBtn.onclick = () => submitAllEvaluations();
+    listEl.appendChild(batchBtn);
   }
   
   for (const it of items) {
@@ -326,7 +293,7 @@ async function render() {
           ${Object.keys(POS_MAP).map(k => `<button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>`).join('')}
        </div>
        <div class="pos-label">Customer ID:</div>
-       <input type="text" id="custId-${it.row}" name="custId-${it.row}" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
+       <input type="text" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
 
     card.innerHTML = `
       <div class="card-left">
@@ -340,14 +307,12 @@ async function render() {
         ${posAndIdHtml}
         <div class="weight-row">
           <input type="number" 
-       id="weight_input_${it.row}" 
-       name="weight_${it.row}" 
-       inputmode="decimal" 
-       step="0.001" 
-       class="weight-input" 
-       value="${displayWeight}" 
-       placeholder="0.000" 
-       oninput="updateField(${it.row}, 'weight', this.value, true)">
+                 inputmode="decimal" 
+                 step="0.001" 
+                 class="weight-input" 
+                 value="${displayWeight}" 
+                 placeholder="0.000" 
+                 oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
         </div>
         <div>
@@ -435,32 +400,34 @@ async function submitEvaluationComplete(row) {
   }
 }
 
+// 異步抓取網址預覽圖 (針對 Mercari 優化版)
 async function fetchPreview(url, row) {
-  const loader = document.getElementById(`img-load-${row}`);
-  
-  // 1. 如果不是 Mercari，暫時不自動抓取縮圖，節省 API 額度
-  if (!url.includes('mercari.com')) {
-    if (loader) loader.textContent = '點擊網址查看';
-    return;
-  }
-
   try {
+    // 如果是 Mercari 網址，我們嘗試先用常用的圖片格式來「猜」
+    // Mercari 商品 ID 通常是 m 開頭的一串數字
     const mId = url.match(/item\/(m\d+)/);
+    
+    // 方案 A: 如果能解析出 ID，直接構造 Mercari 的圖片 CDN 地址 (這是最穩定的)
     if (mId && mId[1]) {
       const mercariImg = `https://static.mercdn.net/item/detail/orig/photos/${mId[1]}_1.jpg`;
+      
+      // 驗證圖片是否有效
       const imgCheck = new Image();
       imgCheck.src = mercariImg;
       imgCheck.onload = () => {
         urlPreviewCache.set(url, mercariImg);
         updateImgWrap(row, mercariImg);
       };
-      imgCheck.onerror = () => { if (loader) loader.textContent = '無縮圖'; };
+      imgCheck.onerror = () => fetchFromAPI(url, row); // 如果猜錯了，退回使用 API
       return;
     }
-    // 如果是 Mercari 但解析不到 ID，才用 API (可選，或直接放棄以省錢)
-    // await fetchFromAPI(url, row); 
+    
+    // 方案 B: 非 Mercari 或解析失敗，使用 API
+    await fetchFromAPI(url, row);
+    
   } catch (e) {
-    if (loader) loader.textContent = '載入失敗';
+    const loader = document.getElementById(`img-load-${row}`);
+    if (loader) loader.textContent = '無預覽圖';
   }
 }
 
@@ -623,7 +590,7 @@ function buildArrivalTabs(){
     const t = document.createElement('div');
     t.style.cssText = `padding:8px 15px; border-radius:20px; background:${currentArrival===name?'#2563eb':'#fff'}; color:${currentArrival===name?'#fff':'#475569'}; border:1px solid #ddd; cursor:pointer; font-size:13px; font-weight:bold; white-space:nowrap;`;
     t.textContent = name;
-    t.onclick = () => { currentArrival = name; render(); buildArrivalTabs(); fetchShipmentNotice();};
+    t.onclick = () => { currentArrival = name; render(); buildArrivalTabs(); };
     tabs.appendChild(t);
   });
 }
