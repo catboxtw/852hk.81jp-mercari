@@ -88,7 +88,7 @@ function doLogin() {
 
 function loadData() {
   const content = document.getElementById('mainContent');
-  content.innerHTML = '<div class="loading">正在優化讀取大數據中...請稍候...</div>';
+  content.innerHTML = '<div class="loading">正在讀取大數據中...請稍候...</div>';
   
   fetch(API, {
     method: 'POST',
@@ -96,10 +96,21 @@ function loadData() {
   })
   .then(r => r.json())
   .then(data => {
+    if (!data || !data.allGroups || Object.keys(data.allGroups).length === 0) {
+      content.innerHTML = '<div class="loading">❌ 目前沒有已入庫的執貨資料</div>';
+      return;
+    }
+    
     GLOBAL_DATA = data.allGroups;
-    CURRENT_GROUP = data.latestGroup;
+    // 優先使用 GAS 算出的最新團號，如果找不到，就取資料庫裡最後一個
+    CURRENT_GROUP = GLOBAL_DATA[data.latestGroup] ? data.latestGroup : Object.keys(GLOBAL_DATA).sort().reverse()[0];
+    
     renderTabs();
     renderGroup(CURRENT_GROUP);
+  })
+  .catch(err => {
+    console.error(err);
+    content.innerHTML = '<div class="loading">❌ 連線失敗</div>';
   });
 }
 
