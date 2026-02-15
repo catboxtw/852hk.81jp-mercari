@@ -140,7 +140,7 @@ let password = '', allItems = [], allCustomerIds = [], currentFilter = 'todo', c
 let urlPreviewCache = new Map(); // 用於存儲抓取過的網址縮圖
 
 // 新增：抓取寄出日期並顯示
-function fetchShipmentNotice() {
+async function fetchShipmentNotice() {
   const noticeEl = document.getElementById('shipmentNotice');
   if (!noticeEl) return;
 
@@ -151,22 +151,18 @@ function fetchShipmentNotice() {
     return;
   }
 
-  // 加上 try catch 確保即使這行壞了，下方的 render 也能繼續跑
   try {
-    fetch(`${API}?action=getShipmentNotice`)
-      .then(r => r.json())
-      .then(d => {
-        if (d && d.success) {
-          noticeEl.innerHTML = `📢 ${d.text}`;
-        } else {
-          noticeEl.style.display = 'none';
-        }
-      })
-      .catch(e => {
-        console.log("寄出日期獲取失敗", e);
-        noticeEl.style.display = 'none';
-      });
-  } catch (err) {
+    const response = await fetch(`${API}?action=getShipmentNotice`);
+    if (!response.ok) throw new Error('Network error');
+    
+    const d = await response.json();
+    if (d && d.success) {
+      noticeEl.innerHTML = `📢 ${d.text}`;
+    } else {
+      noticeEl.style.display = 'none';
+    }
+  } catch (e) {
+    console.error("日期提示抓取失敗，但繼續執行後續邏輯:", e);
     noticeEl.style.display = 'none';
   }
 }
