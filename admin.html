@@ -296,25 +296,25 @@ async function render() {
        <input type="text" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
 
     card.innerHTML = `
-      <div class="card-left">
-        <div class="code-tag">${esc(it.code || '無編號')}</div>
-        <a class="url-text" href="${finalLink}" target="_blank" rel="noopener" 
-           style="${isUnratedMode ? 'color:#2563eb; font-weight:bold; text-decoration:underline; font-size:14px;' : ''}">
-           ${finalLink ? esc(finalLink) : '(無網址)'}
-        </a>
-        <div style="font-weight:bold; font-size:14px; color:#1e293b; margin-bottom:2px; cursor:pointer;" onclick="editPrompt(${it.row}, 'link', '${escAttr(displayLink)}')">${esc(it.item)}</div>
-        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 現有日期: <span style="font-weight:bold;">${it.arrivalDate || '未到貨'}</span></div>
-        ${posAndIdHtml}
-        <div class="weight-row">
-          <input type="number" 
-                 inputmode="decimal" 
-                 step="0.001" 
-                 class="weight-input" 
-                 value="${displayWeight}" 
-                 placeholder="0.000" 
-                 oninput="updateField(${it.row}, 'weight', this.value, true)">
-          <span class="weight-unit">kg</span>
-        </div>
+  <div class="card-left">
+    <div class="code-tag">${esc(it.code || '無編號')}</div>
+    <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">📅 到貨日期: <span style="font-weight:bold;">${it.arrivalDate || '未填'}</span></div>
+    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">🚚 寄出日期: <span style="font-weight:bold; color:#2563eb;">${it.shipDate || '未填'}</span></div>
+
+    ${posAndIdHtml}
+
+    <div class="weight-row">
+      <input type="number" 
+             id="w_inp_${it.row}" 
+             name="w_inp_${it.row}" 
+             inputmode="decimal" 
+             step="0.001" 
+             class="weight-input" 
+             value="${displayWeight}" 
+             oninput="updateField(${it.row}, 'weight', this.value, true)">
+      <span class="weight-unit">kg</span>
+    </div>
+    `;
         <div>
           ${displayTrack ? `<span class="green-tag" onclick="editPrompt(${it.row}, 'track', '${esc(displayTrack)}')">${esc(displayTrack)}</span>` : `<span style="font-size:11px; color:#94a3b8; cursor:pointer;" onclick="editPrompt(${it.row}, 'track', '')">+ 運單</span>`}
         </div>
@@ -402,33 +402,25 @@ async function submitEvaluationComplete(row) {
 
 // 異步抓取網址預覽圖 (針對 Mercari 優化版)
 async function fetchPreview(url, row) {
-  try {
-    // 如果是 Mercari 網址，我們嘗試先用常用的圖片格式來「猜」
-    // Mercari 商品 ID 通常是 m 開頭的一串數字
-    const mId = url.match(/item\/(m\d+)/);
-    
-    // 方案 A: 如果能解析出 ID，直接構造 Mercari 的圖片 CDN 地址 (這是最穩定的)
-    if (mId && mId[1]) {
-      const mercariImg = `https://static.mercdn.net/item/detail/orig/photos/${mId[1]}_1.jpg`;
-      
-      // 驗證圖片是否有效
-      const imgCheck = new Image();
-      imgCheck.src = mercariImg;
-      imgCheck.onload = () => {
-        urlPreviewCache.set(url, mercariImg);
-        updateImgWrap(row, mercariImg);
-      };
-      imgCheck.onerror = () => fetchFromAPI(url, row); // 如果猜錯了，退回使用 API
-      return;
-    }
-    
-    // 方案 B: 非 Mercari 或解析失敗，使用 API
-    await fetchFromAPI(url, row);
-    
-  } catch (e) {
-    const loader = document.getElementById(`img-load-${row}`);
-    if (loader) loader.textContent = '無預覽圖';
+  // 1. 如果是 Mercari，直接構造圖片連結，完全不調用外部 API
+  const mId = url.match(/item\/(m\d+)/);
+  if (mId && mId[1]) {
+    const mercariImg = `https://static.mercdn.net/item/detail/orig/photos/${mId[1]}_1.jpg`;
+    urlPreviewCache.set(url, mercariImg);
+    updateImgWrap(row, mercariImg);
+    return;
   }
+
+  // 2. 如果不是 Mercari，加入 0.5~3 秒的隨機延遲，防止瞬間併發 2000 個請求
+  setTimeout(async () => {
+    try {
+      if (!url.startsWith('http')) return;
+      await fetchFromAPI(url, row);
+    } catch (e) {
+      const loader = document.getElementById(`img-load-${row}`);
+      if (loader) loader.textContent = '暫無預覽';
+    }
+  }, Math.random() * 2500); 
 }
 
 // 原有的 API 抓取邏輯作為後備
@@ -492,48 +484,28 @@ function updateField(row, field, value, isTyping = false) {
 async function saveBatchData() {
   if (pendingUpdates.size === 0) return;
   if (!confirm("確定儲存全部修改？")) return;
-  
-  const btn = document.querySelector('#batchBar button:last-child');
-  const originalBtnText = btn.textContent;
-  btn.disabled = true; 
-  btn.textContent = '儲存中...';
 
-  // 取得上方輸入框的到貨日期
   const dateVal = document.getElementById('arrivalDateInput').value.replace(/-/g, '/');
   
-  // 準備所有儲存任務
   const tasks = Array.from(pendingUpdates.entries()).map(([row, data]) => {
     const params = { action: 'saveArrivalData', password: password, row: row };
-    
-    // 判斷是否有填寫重量，若有，則觸發「未評價」標籤
     const hasWeight = data.weight !== undefined && data.weight.toString().trim() !== "";
 
     if (data.position !== undefined) params.position = data.position;
     if (data.custId !== undefined) params.custId = data.custId;
-    if (data.image !== undefined) params.image = data.image;
     if (data.weight !== undefined) params.weight = data.weight;
-    if (data.link !== undefined) params.link = data.link;
     
-    // 處理運單編號前綴
-    if (data.track !== undefined) {
-      let val = data.track.trim();
-      if (val !== "" && !val.startsWith("送り状番号：")) val = "送り状番号：" + val;
-      params.track = val;
-    }
-
-    // 當填寫重量時，自動更新日期與狀態
+    // 關鍵修改：如果有填重量，自動填入到貨日期、寄出日期與未評價狀態
     if (hasWeight) {
-      params.arrivalDate = dateVal;
+      params.arrivalDate = dateVal;  // 原有的到貨日期
+      params.shipDate = dateVal;     // 新增：將相同日期寫入寄出日期欄位
       params.status = '未評價'; 
-    } else {
-      if (data.status !== undefined) params.status = data.status;
     }
     
-    // 封裝成 POST 請求
     const body = new URLSearchParams();
     for (let key in params) body.append(key, params[key]);
     return fetch(API, {method:'POST', body}).then(r => r.json());
-  }); // 這裡結束 .map
+  });
 
   try {
     await Promise.all(tasks);
