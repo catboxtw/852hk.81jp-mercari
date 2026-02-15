@@ -188,8 +188,13 @@ function doLogin() {
   fetch(API, {method:'POST', body: new URLSearchParams({action:'getAdminItems', password})})
   .then(r => r.json())
   .then(d => {
+    console.log("Debug - Data from GAS:", d);
     if(d.error) throw new Error(d.error);
-    allItems = d.items || [];
+    // 確保 items 存在
+  allItems = d.items || [];
+  if (allItems.length === 0) {
+      console.warn("警告：GAS 回傳成功但資料庫是空的");
+  }
 
     // --- 【修正版】動態更新下拉選單 ---
     
@@ -240,8 +245,9 @@ function doLogin() {
     document.getElementById('addDate').value = today;
 
     setFilter('todo'); 
-    buildArrivalTabs();
-  })
+    buildArrivalTabs(); 
+  setFilter('all'); // 👈 登入後預設看「全部」，確保一定有東西看
+})
   .catch(err => { 
     console.error(err);
     document.getElementById('loginStatus').textContent = '密碼錯誤或連線失敗'; 
@@ -259,6 +265,7 @@ async function render() {
     if (currentFilter === 'todo') return !i.image;
     return true;
   }).filter(i => {
+    if (currentFilter === 'all') return true;
     const arr = String(i.arrival || '').trim();
     return (currentArrival === '未到貨') ? (!arr) : (arr === currentArrival);
   });
@@ -319,7 +326,7 @@ async function render() {
           ${Object.keys(POS_MAP).map(k => `<button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>`).join('')}
        </div>
        <div class="pos-label">Customer ID:</div>
-       <input type="text" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
+       <input type="text" id="custId-${it.row}" name="custId-${it.row}" list="idList" class="id-input" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
 
     card.innerHTML = `
       <div class="card-left">
@@ -332,11 +339,7 @@ async function render() {
         <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 現有日期: <span style="font-weight:bold;">${it.arrivalDate || '未到貨'}</span></div>
         ${posAndIdHtml}
         <div class="weight-row">
-          <input type="number" 
-                 inputmode="decimal" 
-                 step="0.001" 
-                 class="weight-input" 
-                 value="${displayWeight}" 
+          <input type="number" id="weight-${it.row}" name="weight-${it.row}" inputmode="decimal" step="0.001" class="weight-input" value="${displayWeight}" 
                  placeholder="0.000" 
                  oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
