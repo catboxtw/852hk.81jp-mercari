@@ -277,6 +277,9 @@ async function render() {
     const displayPos = pData.position !== undefined ? pData.position : (it.position || '');
     const displayLink = pData.link !== undefined ? pData.link : (it.link || '');
     const displayTrack = pData.track !== undefined ? pData.track : (it.track || '');
+    
+    // --- 漏咗呢度：確保商品名稱有值 ---
+    const displayItemName = it.itemName || it.item || '查看商品'; 
 
     const isUnratedMode = (currentFilter === 'unrated');
     let finalLink = displayLink;
@@ -308,18 +311,28 @@ async function render() {
           <button onclick="editingRows.add(${it.row}); render();" style="padding:4px 8px; font-size:11px; background:#fff; border:1px solid #cbd5e1; border-radius:4px;">✏️</button>
        </div>` :
       `<div class="pos-label">Position:</div>
-       <div class="pos-group">${Object.keys(POS_MAP).map(k => `<button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>`).join('')}</div>
-       <input type="text" list="idList" class="id-input" placeholder="Customer ID" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
+        <div class="pos-group">${Object.keys(POS_MAP).map(k => `<button class="pos-btn ${displayPos === POS_MAP[k] ? 'selected' : ''}" onclick="updateField(${it.row}, 'position', '${POS_MAP[k]}')">${k}</button>`).join('')}</div>
+        <input type="text" list="idList" class="id-input" placeholder="Customer ID" value="${esc(displayId)}" oninput="updateField(${it.row}, 'custId', this.value, true)">`;
 
     card.innerHTML = `
       <div class="card-left">
         <div class="code-tag">${esc(it.code || '無編號')}</div>
+        
+        <div style="margin: 4px 0 8px 0;">
+          <a href="${escAttr(finalLink)}" target="_blank" style="text-decoration:none; color:#2563eb; font-weight:bold; font-size:14px; display:inline-block; border-bottom: 1px solid #bfdbfe; padding-bottom: 2px;">
+            🔗 ${esc(displayItemName)}
+          </a>
+        </div>
+
         <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📅 到貨日期: <span style="font-weight:bold;">${it.arrivalDate || '未填'}</span></div>
+        
         ${posAndIdHtml}
+        
         <div class="weight-row">
           <input type="number" id="w_inp_${it.row}" inputmode="decimal" step="0.001" class="weight-input" value="${displayWeight}" oninput="updateField(${it.row}, 'weight', this.value, true)">
           <span class="weight-unit">kg</span>
         </div>
+        
         <div style="margin-top: 8px;">
           ${displayTrack ? `<span class="green-tag" onclick="editPrompt(${it.row}, 'track', '${esc(displayTrack)}')">${esc(displayTrack)}</span>` : `<span style="font-size:11px; color:#94a3b8; cursor:pointer;" onclick="editPrompt(${it.row}, 'track', '')">+ 運單</span>`}
         </div>
