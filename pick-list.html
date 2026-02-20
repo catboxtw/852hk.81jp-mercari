@@ -160,7 +160,7 @@ function renderGroup(groupName) {
     let html = `<div class="region-section ${cssClass}"><div class="region-title">${label} <span class="total-weight">總重: ${info.totalWeight.toFixed(3)} kg</span></div>`;
 
     const sortedCustIds = Object.keys(info.customers).sort();
-    sortedCustIds.forEach(custId => {
+sortedCustIds.forEach(custId => {
       const items = info.customers[custId].sort((a, b) => Number(a.code) - Number(b.code));
       const minCode = items.length > 0 ? items[0].code : '-';
 
@@ -170,12 +170,21 @@ function renderGroup(groupName) {
           <div class="cust-info-side">
             <div class="cust-name">${custId}</div>
             <div class="code-container">
-              ${items.map(item => `
+              ${items.map(item => {
+                // 判斷是否有 Link，有的話就加超連結
+                const titleHtml = item.link 
+                  ? `<a href="${item.link}" target="_blank" style="text-decoration:none; color:inherit;">${esc(item.itemName || '商品')}</a>`
+                  : esc(item.itemName || '商品');
+
+                return `
                 <div class="item-box">
                   ${item.img ? `<img src="${item.img}" class="thumb" loading="lazy">` : `<div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:#cbd5e1">無圖</div>`}
                   <div class="code-num">#${item.code}</div>
+                  <div style="font-size:10px; color:#64748b; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    ${titleHtml}
+                  </div>
                 </div>
-              `).join('')}
+              `}).join('')}
             </div>
           </div>
         </div>
